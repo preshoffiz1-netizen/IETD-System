@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Connect Mailbox{% endblock %}
+{% block page_title %}Connect a Mailbox{% endblock %}
+{% block content %}
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'imap' }}" href="{{ url_for('mailbox.connect', provider='imap') }}">Generic IMAP</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'gmail' }}" href="{{ url_for('mailbox.connect', provider='gmail') }}">Gmail</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'microsoft' }}" href="{{ url_for('mailbox.connect', provider='microsoft') }}">Microsoft 365 / Outlook</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'demo' }}" href="{{ url_for('mailbox.connect', provider='demo') }}">Demo Mode</a></li>
+</ul>
+
+<div class="card" style="max-width:640px;"><div class="card-body">
+
+{% if provider == 'imap' %}
+    <h6 class="mb-3">Generic IMAP</h6>
+    <p class="text-muted small">Works with most mail providers using an email address + app password. IETDS scans your INBOX and quarantines detected threats (post-delivery filtering). Your password is encrypted before it is stored.</p>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="provider" value="imap">
+        <div class="mb-3"><label class="form-label">Display name</label><input class="form-control" name="display_name" placeholder="e.g. Personal Gmail"></div>
+        <div class="mb-3"><label class="form-label">Email address</label><input class="form-control" name="email_address" type="email" required></div>
+        <div class="mb-3"><label class="form-label">IMAP username <small class="text-muted">(usually same as email)</small></label><input class="form-control" name="imap_username"></div>
+        <div class="mb-3"><label class="form-label">Password / App Password</label><input class="form-control" name="password" type="password" required></div>
+        <div class="row">
+            <div class="col-8 mb-3"><label class="form-label">IMAP server</label><input class="form-control" name="imap_host" placeholder="imap.gmail.com" required></div>
+            <div class="col-4 mb-3"><label class="form-label">Port</label><input class="form-control" name="imap_port" type="number" value="993"></div>
+        </div>
+        <div class="mb-3 form-check">
+            <input class="form-check-input" type="checkbox" name="imap_use_ssl" id="ssl" checked>
+            <label class="form-check-label" for="ssl">Use SSL/TLS encryption</label>
+        </div>
+        <button class="btn btn-primary">Connect Mailbox</button>
+    </form>
+
+{% elif provider == 'gmail' %}
+    <h6 class="mb-3">Gmail (OAuth 2.0)</h6>
+    <p class="text-muted small">IETDS never asks for your Google password. You will be redirected to Google to grant access, and IETDS receives only an OAuth token.</p>
+    <a href="{{ url_for('mailbox.gmail_oauth_start') }}" class="btn btn-primary"><i class="fa-brands fa-google"></i> Connect with Google</a>
+    <p class="text-muted small mt-3 mb-0">Requires <code>GMAIL_CLIENT_ID</code> / <code>GMAIL_CLIENT_SECRET</code> to be configured on the server (see .env.example).</p>
+
+{% elif provider == 'microsoft' %}
+    <h6 class="mb-3">Microsoft 365 / Outlook (OAuth 2.0)</h6>
+    <p class="text-muted small">IETDS never asks for your Microsoft password. You will be redirected to Microsoft to grant access via Microsoft Graph.</p>
+    <a href="{{ url_for('mailbox.microsoft_oauth_start') }}" class="btn btn-primary"><i class="fa-brands fa-microsoft"></i> Connect with Microsoft</a>
+    <p class="text-muted small mt-3 mb-0">Requires <code>MICROSOFT_CLIENT_ID</code> / <code>MICROSOFT_CLIENT_SECRET</code> to be configured on the server (see .env.example).</p>
+
+{% elif provider == 'demo' %}
+    <h6 class="mb-3">Demo Mode</h6>
+    <p class="text-muted small">Adds a synthetic demo mailbox pre-loaded with clearly-labelled example emails (clean, spam, scam, phishing, malicious attachment, suspicious URL, sender spoofing, newsletter) so you can demonstrate IETDS end-to-end without connecting a real account.</p>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="provider" value="demo">
+        <button class="btn btn-primary">Add Demo Mailbox</button>
+    </form>
+{% endif %}
+
+</div></div>
+{% endblock %}

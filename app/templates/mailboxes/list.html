@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Mailboxes{% endblock %}
+{% block page_title %}Connected Mailboxes{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+    <a href="{{ url_for('mailbox.connect') }}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Connect Mailbox</a>
+</div>
+
+{% if not mailboxes %}
+<div class="card"><div class="card-body empty-state">
+    <i class="fa-solid fa-envelope-circle-check"></i>
+    <h5>No mailboxes connected yet</h5>
+    <p>Connect a generic IMAP account, Gmail, or Microsoft 365 mailbox - or add the built-in Demo mailbox to try IETDS with synthetic emails.</p>
+    <a href="{{ url_for('mailbox.connect') }}" class="btn btn-primary">Connect your first mailbox</a>
+</div></div>
+{% else %}
+<div class="row g-3">
+{% for m in mailboxes %}
+    <div class="col-md-6">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-0">{{ m.display_name or m.email_address }}</h6>
+                    <small class="text-muted">{{ m.email_address }} &middot; {{ m.provider|upper }}</small>
+                </div>
+                {% if m.status == 'connected' %}<span class="badge text-bg-success">Connected</span>
+                {% elif m.status == 'error' %}<span class="badge text-bg-danger">Error</span>
+                {% elif m.status == 'disconnected' %}<span class="badge text-bg-secondary">Disconnected</span>
+                {% else %}<span class="badge text-bg-warning">Pending</span>{% endif %}
+            </div>
+            {% if m.status_message %}<p class="small text-muted mt-2 mb-0">{{ m.status_message }}</p>{% endif %}
+
+            <div class="row mt-3 text-center">
+                <div class="col-4"><div class="fw-bold">{{ m.messages_processed }}</div><small class="text-muted">Processed</small></div>
+                <div class="col-4"><div class="fw-bold">{{ m.threats_detected }}</div><small class="text-muted">Threats</small></div>
+                <div class="col-4"><div class="fw-bold">{{ 'On' if m.monitoring_enabled else 'Off' }}</div><small class="text-muted">Monitoring</small></div>
+            </div>
+            <p class="small text-muted mt-2 mb-1">Last scan: {{ m.last_scan_at.strftime('%Y-%m-%d %H:%M') if m.last_scan_at else 'Never' }}</p>
+
+            {% set caps = m.capabilities() %}
+            <p class="small mb-3">
+                {% if caps.get('server_side_filtering') or caps.get('server_side_blocking') %}
+                    <span class="text-success"><i class="fa-solid fa-circle-check"></i> Post-delivery filtering available. Provider-specific server-side filtering also available.</span>
+                {% else %}
+                    <span class="text-muted"><i class="fa-solid fa-circle-info"></i> IETDS will scan new messages and automatically quarantine detected threats (post-delivery filtering). Server-side blocking is not available for this provider.</span>
+                {% endif %}
+            </p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <form method="POST" action="{{ url_for('mailbox.test_connection', mailbox_id=m.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">Test Connection</button></form>
+                <form method="POST" action="{{ url_for('mailbox.scan_now', mailbox_id=m.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-primary">Scan Now</button></form>
+                <form method="POST" action="{{ url_for('mailbox.toggle_monitoring', mailbox_id=m.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="enabled" value="{{ '0' if m.monitoring_enabled else '1' }}">
+                    <input type="hidden" name="interval_minutes" value="{{ m.scan_interval_minutes }}">
+                    <button class="btn btn-sm btn-outline-{{ 'warning' if m.monitoring_enabled else 'success' }}">{{ 'Disable Monitoring' if m.monitoring_enabled else 'Enable Monitoring' }}</button>
+                </form>
+                <form method="POST" action="{{ url_for('mailbox.disconnect', mailbox_id=m.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">Disconnect</button></form>
+                <form method="POST" action="{{ url_for('mailbox.delete', mailbox_id=m.id) }}" data-confirm="Delete this mailbox and all associated data?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+            </div>
+        </div>
+    </div>
+    </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

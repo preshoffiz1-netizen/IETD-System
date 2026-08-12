@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+
+<div class="row g-3">
+<div class="col-md-6">
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Detection Thresholds</h6>
+        <p class="text-muted small">Total threat score ranges that determine classification (Section 26). Admins only.</p>
+        <form method="POST" action="{{ url_for('settings.update_thresholds') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-2"><label class="form-label small">Clean: 0 to</label><input class="form-control form-control-sm" type="number" name="clean_max" value="{{ thresholds.clean_max }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            <div class="mb-2"><label class="form-label small">Suspicious: up to</label><input class="form-control form-control-sm" type="number" name="suspicious_max" value="{{ thresholds.suspicious_max }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            <div class="mb-2"><label class="form-label small">Spam: up to</label><input class="form-control form-control-sm" type="number" name="spam_max" value="{{ thresholds.spam_max }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            <div class="mb-3"><label class="form-label small">High Risk: at or above</label><input class="form-control form-control-sm" type="number" name="high_risk_min" value="{{ thresholds.high_risk_min }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            {% if current_user.is_admin %}<button class="btn btn-sm btn-primary">Save Thresholds</button>{% endif %}
+        </form>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h6 class="card-title">Branding</h6>
+        <form method="POST" action="{{ url_for('settings.update_branding') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-2"><label class="form-label small">Application name</label><input class="form-control form-control-sm" name="app_name" value="{{ app_name }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            <div class="mb-3"><label class="form-label small">Tagline</label><input class="form-control form-control-sm" name="tagline" value="{{ app_tagline }}" {{ 'disabled' if not current_user.is_admin }}></div>
+            {% if current_user.is_admin %}<button class="btn btn-sm btn-primary">Save Branding</button>{% endif %}
+        </form>
+    </div></div>
+</div>
+
+<div class="col-md-6">
+    <div class="card"><div class="card-body">
+        <h6 class="card-title">Action Policy</h6>
+        <p class="text-muted small">Comma-separated actions per classification (allow, flag, quarantine, move_to_spam, move_to_folder, delete, notify). Admins only.</p>
+        <form method="POST" action="{{ url_for('settings.update_actions') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% for c in ['clean','suspicious','spam','scam','phishing','malicious_attachment'] %}
+            <div class="mb-2">
+                <label class="form-label small">{{ c|replace('_',' ')|title }}</label>
+                <input class="form-control form-control-sm" name="action_{{ c }}"
+                       value="{{ settings|selectattr('key','equalto','action.'+c)|map(attribute='value')|first|default('') }}"
+                       {{ 'disabled' if not current_user.is_admin }}>
+            </div>
+            {% endfor %}
+            {% if current_user.is_admin %}<button class="btn btn-sm btn-primary">Save Action Policy</button>{% endif %}
+        </form>
+        <p class="small text-muted mt-2 mb-0"><i class="fa-solid fa-circle-info"></i> Dangerous emails are never permanently deleted by default - "delete" must be explicitly configured.</p>
+    </div></div>
+</div>
+</div>
+{% endblock %}

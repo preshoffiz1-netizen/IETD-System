@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Rules{% endblock %}
+{% block page_title %}Detection Rules{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+    <a href="{{ url_for('rules.create') }}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Custom Rule</a>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <h6 class="card-title">Custom Rules ({{ custom_rules|length }})</h6>
+    {% if not custom_rules %}
+    <p class="text-muted small">No custom rules yet. The built-in rule-based engine below is always active.</p>
+    {% else %}
+    <table class="table table-sm">
+        <thead><tr><th>Name</th><th>Category</th><th>Score</th><th>Action</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for r in custom_rules %}
+        <tr>
+            <td>{{ r.name }}</td>
+            <td>{{ r.category }}</td>
+            <td>{{ r.score }}</td>
+            <td>{{ r.action }}</td>
+            <td>{% if r.enabled %}<span class="badge text-bg-success">Enabled</span>{% else %}<span class="badge text-bg-secondary">Disabled</span>{% endif %}</td>
+            <td class="text-nowrap">
+                <form class="d-inline" method="POST" action="{{ url_for('rules.toggle', rule_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">{{ 'Disable' if r.enabled else 'Enable' }}</button></form>
+                <form class="d-inline" method="POST" action="{{ url_for('rules.delete', rule_id=r.id) }}" data-confirm="Delete this custom rule?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div></div>
+
+<div class="card"><div class="card-body">
+    <h6 class="card-title">Built-in Rule-Based Engine ({{ builtin_rules|length }} rules)</h6>
+    <p class="text-muted small">These are the RULE-BASED detectors that make up the core engine (Sections 15-27) - not machine learning. Each rule is independently testable and explainable.</p>
+    <table class="table table-sm">
+        <thead><tr><th>Rule</th><th>Category</th><th>Default Score</th><th>Severity</th></tr></thead>
+        <tbody>
+        {% for r in builtin_rules %}
+        <tr><td><code>{{ r.name }}</code></td><td>{{ r.category }}</td><td>{{ r.score }}</td><td>{{ r.severity }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div></div>
+{% endblock %}

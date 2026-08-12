@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+{% block auth_content %}
+<div class="auth-card" style="width:480px;">
+    <div class="text-center mb-4">
+        <i class="fa-solid fa-shield-halved fa-2x" style="color:#2e7dfd;"></i>
+        <h4 class="mt-2 mb-0">Create your {{ app_name }} account</h4>
+        <small class="text-muted">Individuals and small-scale organizations welcome.</small>
+    </div>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+            <label class="form-label">Full name</label>
+            <input type="text" class="form-control" name="full_name" value="{{ form.get('full_name','') }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email address</label>
+            <input type="email" class="form-control" name="email" value="{{ form.get('email','') }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Organization name <small class="text-muted">(optional - defaults to "Your Name's Organization")</small></label>
+            <input type="text" class="form-control" name="organization_name" value="{{ form.get('organization_name','') }}" placeholder="e.g. Adeyemi Consulting">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Password <small class="text-muted">(min 10 characters)</small></label>
+            <input type="password" class="form-control" name="password" minlength="10" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Confirm password</label>
+            <input type="password" class="form-control" name="confirm_password" minlength="10" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Create account</button>
+    </form>
+    <p class="text-center mt-3 mb-0"><small>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></small></p>
+</div>
+{% endblock %}

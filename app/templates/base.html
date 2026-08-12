@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %} - {{ app_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% if not current_user.is_authenticated %}auth-body{% endif %}">
+{% if current_user.is_authenticated %}
+<div class="app-shell">
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+                <div class="brand-name">{{ app_name }}</div>
+                <div class="brand-tagline">{{ app_tagline }}</div>
+            </div>
+        </div>
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('mailbox.') %}active{% endif %}" href="{{ url_for('mailbox.list_mailboxes') }}"><i class="fa-solid fa-envelope-circle-check"></i> Mailboxes</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('emails.') %}active{% endif %}" href="{{ url_for('emails.list_emails') }}"><i class="fa-solid fa-inbox"></i> Emails</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('quarantine.') %}active{% endif %}" href="{{ url_for('quarantine.list_quarantine') }}"><i class="fa-solid fa-triangle-exclamation"></i> Quarantine</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('rules.') %}active{% endif %}" href="{{ url_for('rules.list_rules') }}"><i class="fa-solid fa-list-check"></i> Rules</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('whitelist.') %}active{% endif %}" href="{{ url_for('whitelist.list_entries') }}"><i class="fa-solid fa-check"></i> Whitelist</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('blacklist.') %}active{% endif %}" href="{{ url_for('blacklist.list_entries') }}"><i class="fa-solid fa-ban"></i> Blacklist</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}"><i class="fa-solid fa-chart-column"></i> Reports</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'health.health_page' %}active{% endif %}" href="{{ url_for('health.health_page') }}"><i class="fa-solid fa-heart-pulse"></i> System Health</a></li>
+            {% if current_user.is_admin %}
+            <li class="nav-item sidebar-section">Administration</li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.users') }}"><i class="fa-solid fa-users-gear"></i> Users</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'admin.audit_log' %}active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="fa-solid fa-scroll"></i> Audit Log</a></li>
+            {% endif %}
+            <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}"><i class="fa-solid fa-sliders"></i> Settings</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <header class="topbar">
+            <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+            <div class="topbar-actions">
+                <span class="badge text-bg-light"><i class="fa-solid fa-building"></i> {{ current_user.organization.name }}</span>
+                <span class="badge text-bg-light"><i class="fa-solid fa-bell"></i> {{ unread_notifications }}</span>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-solid fa-user-circle"></i> {{ current_user.full_name }} ({{ current_user.role }})
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('settings.profile') }}">Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-area">
+            {% include "partials/flash.html" %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+    {% include "partials/flash.html" %}
+    {% block auth_content %}{% endblock %}
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

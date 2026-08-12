@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject or "Email" }}{% endblock %}
+{% block page_title %}Email Inspection{% endblock %}
+{% block content %}
+
+<div class="row g-3">
+<div class="col-md-8">
+    <div class="card mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="mb-1">{{ email.subject or "(no subject)" }}</h5>
+                <p class="mb-0 text-muted small">From: <strong>{{ email.sender_display_name }}</strong> &lt;{{ email.sender }}&gt;</p>
+                <p class="mb-0 text-muted small">To: {{ email.recipient }}</p>
+                {% if email.reply_to %}<p class="mb-0 text-muted small">Reply-To: {{ email.reply_to }}</p>{% endif %}
+                <p class="mb-0 text-muted small">Date: {{ email.date_sent.strftime('%Y-%m-%d %H:%M') if email.date_sent else '-' }}</p>
+                <p class="mb-0 text-muted small">Message-ID: <code>{{ email.message_id or '(missing)' }}</code></p>
+            </div>
+            <span class="badge badge-{{ email.classification }} fs-6">{{ email.classification|replace('_',' ')|title }}</span>
+        </div>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Message Body</h6>
+        {% if safe_html %}
+            <div class="email-html-frame">{{ safe_html|safe }}</div>
+            <p class="small text-muted mt-1">HTML has been sanitized before rendering (scripts/active content removed).</p>
+        {% elif email.body_text %}
+            <pre class="email-html-frame" style="white-space:pre-wrap;">{{ email.body_text }}</pre>
+        {% else %}<p class="text-muted small">No body content.</p>{% endif %}
+    </div></div>
+
+    {% if email.urls %}
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">URLs ({{ email.urls|length }})</h6>
+        <table class="table table-sm">
+            <thead><tr><th>URL</th><th>Domain</th><th>Flags</th></tr></thead>
+            <tbody>
+            {% for u in email.urls %}
+            <tr>
+                <td class="text-break">{{ u.url }}</td>
+                <td>{{ u.domain }}</td>
+                <td>
+                    {% if u.is_ip_address %}<span class="badge text-bg-danger">IP address</span>{% endif %}
+                    {% if u.is_shortened %}<span class="badge text-bg-warning">Shortened</span>{% endif %}
+                    {% if u.is_punycode %}<span class="badge text-bg-danger">Punycode</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+    {% endif %}
+
+    {% if email.attachments %}
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Attachments ({{ email.attachments|length }})</h6>
+        <table class="table table-sm">
+            <thead><tr><th>Filename</th><th>Type</th><th>Size</th><th>Flags</th></tr></thead>
+            <tbody>
+            {% for a in email.attachments %}
+            <tr>
+                <td>{{ a.filename }}</td>
+                <td>{{ a.mime_type }}</td>
+                <td>{{ (a.size_bytes / 1024)|round(1) }} KB</td>
+                <td>
+                    {% if a.is_dangerous_extension %}<span class="badge text-bg-danger">Dangerous extension</span>{% endif %}
+                    {% if a.is_macro_enabled %}<span class="badge text-bg-warning">Macro-enabled</span>{% endif %}
+                    {% if a.has_double_extension %}<span class="badge text-bg-danger">Double extension</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="small text-muted mb-0"><i class="fa-solid fa-lock"></i> Attachments are inspected only (filename/extension/MIME/hash) and are never opened or executed.</p>
+    </div></div>
+    {% endif %}
+
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Raw Headers</h6>
+        <pre class="email-headers">{{ email.raw_headers }}</pre>
+    </div></div>
+</div>
+
+<div class="col-md-4">
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Threat Score: {{ email.threat_score }}</h6>
+        {% if email.threat_analysis %}
+        <table class="table table-sm">
+            {% for key, value in email.threat_analysis.score_breakdown().items() %}
+                {% if value %}<tr><td>{{ key|replace('_',' ')|title }}</td><td class="text-end">+{{ value }}</td></tr>{% endif %}
+            {% endfor %}
+        </table>
+        <hr>
+        <h6>Triggered Rules ({{ email.threat_analysis.indicators|length }})</h6>
+        {% for ind in email.threat_analysis.indicators %}
+        <div class="border rounded p-2 mb-2">
+            <div class="d-flex justify-content-between">
+                <strong class="small">+{{ ind.score_contribution }} {{ ind.rule_name }}</strong>
+                <span class="badge text-bg-{{ 'danger' if ind.severity in ['high','critical'] else 'warning' if ind.severity == 'medium' else 'secondary' }}">{{ ind.severity }}</span>
+            </div>
+            <div class="small text-muted">{{ ind.reason }}</div>
+        </div>
+        {% endfor %}
+        {% else %}<p class="text-muted small">No detection analysis (whitelisted or not yet analyzed).</p>{% endif %}
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Authentication</h6>
+        <p class="small mb-1">SPF: <strong>{{ email.spf_result|upper }}</strong></p>
+        <p class="small mb-1">DKIM: <strong>{{ email.dkim_result|upper }}</strong></p>
+        <p class="small mb-0">DMARC: <strong>{{ email.dmarc_result|upper }}</strong></p>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Actions</h6>
+        <p class="small">Action taken: <strong>{{ email.action_taken or 'none' }}</strong></p>
+        <div class="d-grid gap-2">
+            {% if email.quarantine_item and email.quarantine_item.status == 'quarantined' %}
+            <form method="POST" action="{{ url_for('emails.release', email_id=email.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-success w-100">Release from Quarantine</button></form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('emails.whitelist', email_id=email.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="entry_type" value="email"><button class="btn btn-sm btn-outline-success w-100">Whitelist Sender</button></form>
+            <form method="POST" action="{{ url_for('emails.blacklist', email_id=email.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="entry_type" value="email"><button class="btn btn-sm btn-outline-danger w-100">Blacklist Sender</button></form>
+            <form method="POST" action="{{ url_for('emails.delete', email_id=email.id) }}" data-confirm="Permanently delete this email?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger w-100">Delete</button></form>
+        </div>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+        <h6 class="card-title">Feedback</h6>
+        <p class="small text-muted">Help improve rule tuning by flagging incorrect classifications.</p>
+        <form method="POST" action="{{ url_for('emails.feedback', email_id=email.id) }}" class="d-grid gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-secondary" name="feedback_type" value="false_positive">Mark False Positive</button>
+            <button class="btn btn-sm btn-outline-secondary" name="feedback_type" value="false_negative">Mark False Negative</button>
+        </form>
+    </div></div>
+</div>
+</div>
+{% endblock %}

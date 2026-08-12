@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ stats.total_emails }}</div><div class="stat-label">Total Emails</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-success">{{ stats.clean }}</div><div class="stat-label">Clean</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-warning">{{ stats.suspicious }}</div><div class="stat-label">Suspicious</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-danger">{{ stats.spam }}</div><div class="stat-label">Spam</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-danger">{{ stats.scam }}</div><div class="stat-label">Scam</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-danger">{{ stats.phishing }}</div><div class="stat-label">Phishing</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-danger">{{ stats.malicious_attachment }}</div><div class="stat-label">Malicious Attachment</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ stats.quarantined }}</div><div class="stat-label">Quarantined</div></div></div>
+</div>
+
+{% if stats.total_emails == 0 %}
+<div class="card mb-4"><div class="card-body empty-state">
+    <i class="fa-solid fa-inbox"></i>
+    <h5>No emails scanned yet</h5>
+    <p>Connect a mailbox (or add the Demo mailbox to see synthetic examples) and run a scan to populate this dashboard with real data.</p>
+    <a href="{{ url_for('mailbox.list_mailboxes') }}" class="btn btn-primary">Go to Mailboxes</a>
+</div></div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Threat Classification Distribution</h6>
+            <canvas id="classificationChart" height="220"></canvas>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Threats Over Time (14 days)</h6>
+            <canvas id="threatsOverTimeChart" height="220"></canvas>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Threat Score Distribution</h6>
+            <canvas id="scoreDistChart" height="220"></canvas>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Top Suspicious Senders</h6>
+            {% if top_senders %}
+            <table class="table table-sm">
+                <thead><tr><th>Sender</th><th class="text-end">Count</th></tr></thead>
+                <tbody>{% for s in top_senders %}<tr><td>{{ s.sender }}</td><td class="text-end">{{ s.count }}</td></tr>{% endfor %}</tbody>
+            </table>
+            {% else %}<p class="text-muted small">No data yet.</p>{% endif %}
+        </div></div>
+    </div>
+    <div class="col-md-6">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Top Suspicious Domains</h6>
+            {% if top_domains %}
+            <table class="table table-sm">
+                <thead><tr><th>Domain</th><th class="text-end">Count</th></tr></thead>
+                <tbody>{% for d in top_domains %}<tr><td>{{ d.domain }}</td><td class="text-end">{{ d.count }}</td></tr>{% endfor %}</tbody>
+            </table>
+            {% else %}<p class="text-muted small">No data yet.</p>{% endif %}
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <h6 class="card-title">Most Triggered Rules</h6>
+    {% if top_rules %}
+    <canvas id="topRulesChart" height="90"></canvas>
+    {% else %}<p class="text-muted small">No data yet.</p>{% endif %}
+</div></div>
+
+<div class="card"><div class="card-body">
+    <h6 class="card-title">Recent Threats</h6>
+    {% if recent_threats %}
+    <div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Time</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Score</th><th>Action</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for e in recent_threats %}
+            <tr>
+                <td>{{ e.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ e.sender }}</td>
+                <td><a href="{{ url_for('emails.detail', email_id=e.id) }}">{{ e.subject or '(no subject)' }}</a></td>
+                <td><span class="badge badge-{{ e.classification }}">{{ e.classification|replace('_',' ')|title }}</span></td>
+                <td>{{ e.threat_score }}</td>
+                <td><small>{{ e.action_taken or '-' }}</small></td>
+                <td><small>{{ e.status }}</small></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}<p class="text-muted small">No threats detected yet.</p>{% endif %}
+</div></div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+renderDoughnutChart("classificationChart",
+    {{ classification_chart['labels']|tojson }}, {{ classification_chart['values']|tojson }},
+    ["#17c964","#f5a524","#e5484d","#c11574","#d92d20","#7a1f22"]);
+renderLineChart("threatsOverTimeChart", {{ threats_over_time['labels']|tojson }}, {{ threats_over_time['values']|tojson }}, "Threats");
+renderBarChart("scoreDistChart", {{ score_distribution['labels']|tojson }}, {{ score_distribution['values']|tojson }}, "Emails", "#2e7dfd");
+{% if top_rules %}
+renderBarChart("topRulesChart",
+    {{ top_rules|map(attribute='rule_name')|list|tojson }},
+    {{ top_rules|map(attribute='count')|list|tojson }}, "Triggers", "#6941c6");
+{% endif %}
+</script>
+{% endblock %}

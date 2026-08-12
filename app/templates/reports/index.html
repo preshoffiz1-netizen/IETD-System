@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <a href="{{ url_for('reports.export_csv') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+    <a href="{{ url_for('reports.export_json') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-file-code"></i> Export JSON</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ stats.total_emails }}</div><div class="stat-label">Total Emails</div></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ stats.quarantined }}</div><div class="stat-label">Quarantined</div></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ stats.phishing + stats.scam }}</div><div class="stat-label">Phishing + Scam</div></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ stats.spam }}</div><div class="stat-label">Spam</div></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ false_positive_count }}</div><div class="stat-label">False Positives</div></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><div class="stat-value">{{ false_negative_count }}</div><div class="stat-label">False Negatives</div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Top Suspicious Senders</h6>
+            <table class="table table-sm">
+                {% for s in top_senders %}<tr><td>{{ s.sender }}</td><td class="text-end">{{ s.count }}</td></tr>{% else %}<tr><td class="text-muted">No data yet.</td></tr>{% endfor %}
+            </table>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Top Suspicious Domains</h6>
+            <table class="table table-sm">
+                {% for d in top_domains %}<tr><td>{{ d.domain }}</td><td class="text-end">{{ d.count }}</td></tr>{% else %}<tr><td class="text-muted">No data yet.</td></tr>{% endfor %}
+            </table>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body">
+            <h6 class="card-title">Most Triggered Rules</h6>
+            <table class="table table-sm">
+                {% for r in top_rules %}<tr><td>{{ r.rule_name }}</td><td class="text-end">{{ r.count }}</td></tr>{% else %}<tr><td class="text-muted">No data yet.</td></tr>{% endfor %}
+            </table>
+        </div></div>
+    </div>
+</div>
+{% endblock %}

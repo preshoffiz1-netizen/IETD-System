@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Blacklist{% endblock %}
+{% block page_title %}Blacklist{% endblock %}
+{% block content %}
+
+<div class="row g-3">
+<div class="col-md-4">
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="card-title">Add Entry</h6>
+        <form method="POST" action="{{ url_for('blacklist.add') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-2">
+                <select class="form-select form-select-sm" name="entry_type">
+                    <option value="email">Email address</option><option value="domain">Domain</option>
+                </select>
+            </div>
+            <div class="mb-2"><input class="form-control form-control-sm" name="value" placeholder="scammer@example.com" required></div>
+            <div class="mb-2"><input class="form-control form-control-sm" name="notes" placeholder="Notes (optional)"></div>
+            <button class="btn btn-sm btn-danger w-100">Add to Blacklist</button>
+        </form>
+    </div></div>
+    <div class="card"><div class="card-body">
+        <h6 class="card-title">Import / Export</h6>
+        <a class="btn btn-sm btn-outline-secondary w-100 mb-2" href="{{ url_for('blacklist.export') }}">Export CSV</a>
+        <form method="POST" action="{{ url_for('blacklist.import_csv') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input class="form-control form-control-sm mb-2" type="file" name="file" accept=".csv">
+            <button class="btn btn-sm btn-outline-primary w-100">Import CSV</button>
+        </form>
+    </div></div>
+</div>
+<div class="col-md-8">
+    <div class="card"><div class="card-body p-0">
+    <table class="table table-sm mb-0">
+        <thead><tr><th>Type</th><th>Value</th><th>Notes</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for e in entries %}
+        <tr>
+            <td>{{ e.entry_type }}</td><td>{{ e.value }}</td><td><small>{{ e.notes }}</small></td>
+            <td>{% if e.enabled %}<span class="badge text-bg-success">Enabled</span>{% else %}<span class="badge text-bg-secondary">Disabled</span>{% endif %}</td>
+            <td class="text-nowrap">
+                <form class="d-inline" method="POST" action="{{ url_for('blacklist.toggle', entry_id=e.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">{{ 'Disable' if e.enabled else 'Enable' }}</button></form>
+                <form class="d-inline" method="POST" action="{{ url_for('blacklist.delete', entry_id=e.id) }}" data-confirm="Remove this blacklist entry?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No blacklist entries yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div></div>
+</div>
+</div>
+{% endblock %}

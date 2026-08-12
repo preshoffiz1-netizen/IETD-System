@@ -1,0 +1,127 @@
+:root {
+    --ietds-navy: #0f1b2d;
+    --ietds-navy-light: #16263f;
+    --ietds-accent: #2e7dfd;
+    --ietds-danger: #e5484d;
+    --ietds-warning: #f5a524;
+    --ietds-success: #17c964;
+    --ietds-border: #e4e7ec;
+}
+
+body {
+    background-color: #f5f7fa;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.auth-body {
+    background: linear-gradient(135deg, var(--ietds-navy) 0%, #1c3358 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+    width: 250px;
+    background: var(--ietds-navy);
+    color: #cfd8e3;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 1rem;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sidebar-brand i { font-size: 1.6rem; color: var(--ietds-accent); }
+.brand-name { font-weight: 700; color: #fff; font-size: 1.05rem; }
+.brand-tagline { font-size: .7rem; color: #8fa2bd; }
+
+.sidebar-nav { margin-top: .5rem; }
+.sidebar-nav .nav-link {
+    color: #a8b6c9;
+    padding: .55rem 1.1rem;
+    font-size: .9rem;
+    border-left: 3px solid transparent;
+}
+.sidebar-nav .nav-link i { width: 1.3rem; margin-right: .4rem; }
+.sidebar-nav .nav-link:hover { color: #fff; background: rgba(255,255,255,.04); }
+.sidebar-nav .nav-link.active {
+    color: #fff;
+    background: rgba(46,125,253,.15);
+    border-left-color: var(--ietds-accent);
+    font-weight: 600;
+}
+.sidebar-section {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #5c6f88;
+    padding: 1rem 1.1rem .3rem;
+}
+
+.main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--ietds-border);
+    padding: .8rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.topbar-title { font-weight: 700; font-size: 1.15rem; color: #172033; }
+.topbar-actions { display: flex; align-items: center; gap: .6rem; }
+
+.content-area { padding: 1.5rem; flex: 1; }
+.flash-container { margin-bottom: 1rem; }
+
+.stat-card {
+    background: #fff;
+    border-radius: .6rem;
+    border: 1px solid var(--ietds-border);
+    padding: 1.1rem 1.3rem;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+}
+.stat-card .stat-value { font-size: 1.8rem; font-weight: 700; }
+.stat-card .stat-label { color: #667085; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+
+.card { border: 1px solid var(--ietds-border); border-radius: .6rem; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+
+.badge-clean { background: #ecfdf3; color: #067647; }
+.badge-suspicious { background: #fff4e5; color: #b54708; }
+.badge-spam { background: #fef3f2; color: #b42318; }
+.badge-scam { background: #fdf2fa; color: #c11574; }
+.badge-phishing { background: #fef0f0; color: #d92d20; }
+.badge-malicious_attachment { background: #2b1214; color: #ff8080; }
+
+.auth-card {
+    width: 420px;
+    background: #fff;
+    border-radius: .75rem;
+    padding: 2rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,.25);
+}
+
+.rule-condition-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+
+.demo-badge {
+    background: #f4ebff;
+    color: #6941c6;
+    font-size: .7rem;
+    padding: .1rem .5rem;
+    border-radius: .3rem;
+}
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: #667085; }
+.empty-state i { font-size: 2.5rem; margin-bottom: .75rem; color: #cbd5e1; }
+
+pre.email-headers { max-height: 300px; overflow-y: auto; background: #0f1b2d; color: #cfd8e3; padding: 1rem; border-radius: .4rem; font-size: .78rem; }
+
+.email-html-frame { border: 1px solid var(--ietds-border); border-radius: .4rem; padding: 1rem; background: #fff; max-height: 500px; overflow-y: auto; }

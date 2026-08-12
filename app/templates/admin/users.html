@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Organization Users{% endblock %}
+{% block content %}
+
+<div class="card"><div class="card-body p-0">
+<table class="table mb-0">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+        <td>{{ u.full_name }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+            <form method="POST" action="{{ url_for('admin.update_role', user_id=u.id) }}" class="d-flex gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select class="form-select form-select-sm" name="role" onchange="this.form.submit()" {{ 'disabled' if u.id == current_user.id }}>
+                    {% for r in roles %}<option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ r|title }}</option>{% endfor %}
+                </select>
+            </form>
+        </td>
+        <td>{% if u.is_active_flag %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Disabled</span>{% endif %}</td>
+        <td><small>{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') if u.last_login_at else 'Never' }}</small></td>
+        <td>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.toggle_active', user_id=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">{{ 'Disable' if u.is_active_flag else 'Enable' }}</button></form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div></div>
+{% endblock %}

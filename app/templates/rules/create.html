@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Create Rule{% endblock %}
+{% block page_title %}Create Custom Rule{% endblock %}
+{% block content %}
+
+<div class="card" style="max-width:760px;"><div class="card-body">
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label">Rule name</label><input class="form-control" name="name" required placeholder="e.g. Crypto Investment Scam"></div>
+        <div class="col-md-6 mb-3"><label class="form-label">Category</label>
+            <select class="form-select" name="category">
+                <option value="spam">Spam</option><option value="scam">Scam</option><option value="phishing">Phishing</option>
+                <option value="url">URL</option><option value="attachment">Attachment</option><option value="custom" selected>Custom</option>
+            </select>
+        </div>
+    </div>
+    <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2"></textarea></div>
+    <div class="row">
+        <div class="col-md-4 mb-3"><label class="form-label">Score</label><input class="form-control" name="score" type="number" value="15" required></div>
+        <div class="col-md-4 mb-3"><label class="form-label">Severity</label>
+            <select class="form-select" name="severity">
+                <option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option>
+            </select>
+        </div>
+        <div class="col-md-4 mb-3"><label class="form-label">Action</label>
+            <select class="form-select" name="action">
+                {% for a in actions %}<option value="{{ a }}" {{ 'selected' if a == 'quarantine' }}>{{ a|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <hr>
+    <h6>Conditions</h6>
+    <p class="small text-muted">First row's joiner is ignored. Subsequent rows combine with the running result using AND / OR / NOT.</p>
+    <div id="condition-rows">
+        <div class="rule-condition-row">
+            <select class="form-select form-select-sm" name="condition_joiner" style="width:90px;">
+                <option value="AND">AND</option><option value="OR">OR</option><option value="NOT">NOT</option>
+            </select>
+            <select class="form-select form-select-sm" name="condition_field" style="width:170px;">
+                {% for f in fields %}<option value="{{ f }}">{{ f|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+            <select class="form-select form-select-sm" name="condition_operator" style="width:150px;">
+                {% for op in operators %}<option value="{{ op }}">{{ op|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+            <input class="form-control form-control-sm" name="condition_value" placeholder="value">
+        </div>
+    </div>
+    <template id="condition-row-template">
+        <div class="rule-condition-row">
+            <select class="form-select form-select-sm" name="condition_joiner" style="width:90px;">
+                <option value="AND">AND</option><option value="OR">OR</option><option value="NOT">NOT</option>
+            </select>
+            <select class="form-select form-select-sm" name="condition_field" style="width:170px;">
+                {% for f in fields %}<option value="{{ f }}">{{ f|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+            <select class="form-select form-select-sm" name="condition_operator" style="width:150px;">
+                {% for op in operators %}<option value="{{ op }}">{{ op|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+            <input class="form-control form-control-sm" name="condition_value" placeholder="value">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-condition-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </template>
+    <button type="button" id="add-condition-btn" class="btn btn-sm btn-outline-secondary mb-3"><i class="fa-solid fa-plus"></i> Add Condition</button>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Create Rule</button>
+        <a href="{{ url_for('rules.list_rules') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+</div></div>
+{% endblock %}

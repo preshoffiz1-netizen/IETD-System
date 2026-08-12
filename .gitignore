@@ -1,0 +1,47 @@
+# --- Environments & secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+tokens/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# --- Flask instance / database ---
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Uploads / logs / runtime data ---
+uploads/
+logs/
+*.log
+
+# --- Node / frontend build (if used) ---
+node_modules/
+build/
+dist/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Test artifacts ---
+.tox/
+test-results/

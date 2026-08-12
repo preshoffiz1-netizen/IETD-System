@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}System Health{% endblock %}
+{% block page_title %}System Health{% endblock %}
+{% block content %}
+
+<div class="row g-3">
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value {{ 'text-success' if health.application=='healthy' else 'text-danger' }}">{{ health.application|upper }}</div><div class="stat-label">Application</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value {{ 'text-success' if health.database=='healthy' else 'text-danger' }}">{{ health.database|upper }}</div><div class="stat-label">Database</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value {{ 'text-success' if health.background_worker=='running' else 'text-danger' }}">{{ health.background_worker|upper }}</div><div class="stat-label">Background Worker</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value {{ 'text-success' if health.queue=='healthy' else 'text-danger' }}">{{ health.queue|upper }}</div><div class="stat-label">Queue</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ health.last_successful_scan or 'Never' }}</div><div class="stat-label">Last Successful Scan</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ health.connected_mailboxes }}</div><div class="stat-label">Connected Mailboxes</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ health.failed_jobs }}</div><div class="stat-label">Failed Jobs</div></div></div>
+</div>
+{% endblock %}

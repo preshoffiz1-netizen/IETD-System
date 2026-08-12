@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Emails{% endblock %}
+{% block page_title %}Emails{% endblock %}
+{% block content %}
+
+<div class="card mb-3"><div class="card-body">
+    <form method="GET" class="row g-2">
+        <div class="col-md-2"><input class="form-control form-control-sm" name="sender" placeholder="Sender" value="{{ filters.get('sender','') }}"></div>
+        <div class="col-md-2"><input class="form-control form-control-sm" name="subject" placeholder="Subject" value="{{ filters.get('subject','') }}"></div>
+        <div class="col-md-2">
+            <select class="form-select form-select-sm" name="classification">
+                <option value="">All classifications</option>
+                {% for c in classifications %}<option value="{{ c }}" {{ 'selected' if filters.get('classification')==c }}>{{ c|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select form-select-sm" name="mailbox_id">
+                <option value="">All mailboxes</option>
+                {% for m in mailboxes %}<option value="{{ m.id }}" {{ 'selected' if filters.get('mailbox_id')==m.id }}>{{ m.email_address }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2"><input class="form-control form-control-sm" name="min_score" type="number" placeholder="Min score" value="{{ filters.get('min_score','') }}"></div>
+        <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Filter</button></div>
+    </form>
+</div></div>
+
+{% if not emails %}
+<div class="card"><div class="card-body empty-state">
+    <i class="fa-solid fa-inbox"></i>
+    <h5>No emails found</h5>
+    <p>Run a scan on a connected mailbox, or adjust your filters.</p>
+</div></div>
+{% else %}
+<div class="card"><div class="card-body p-0">
+<div class="table-responsive">
+<table class="table table-hover mb-0 align-middle">
+    <thead><tr><th>Date</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Score</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for e in emails %}
+        <tr>
+            <td><small>{{ e.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+            <td>{{ e.sender }}{% if e.is_demo %} <span class="demo-badge">DEMO</span>{% endif %}</td>
+            <td>{{ e.subject or '(no subject)' }}</td>
+            <td><span class="badge badge-{{ e.classification }}">{{ e.classification|replace('_',' ')|title }}</span></td>
+            <td>{{ e.threat_score }}</td>
+            <td><small>{{ e.status }}</small></td>
+            <td><a href="{{ url_for('emails.detail', email_id=e.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+</div></div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-3"><ul class="pagination pagination-sm">
+    {% for p in range(1, pagination.pages + 1) %}
+    <li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for('emails.list_emails', page=p, **filters) }}">{{ p }}</a></li>
+    {% endfor %}
+</ul></nav>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Quarantine{% endblock %}
+{% block page_title %}Quarantine{% endblock %}
+{% block content %}
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link {{ 'active' if status=='quarantined' }}" href="{{ url_for('quarantine.list_quarantine', status='quarantined') }}">Quarantined</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if status=='released' }}" href="{{ url_for('quarantine.list_quarantine', status='released') }}">Released</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if status=='marked_safe' }}" href="{{ url_for('quarantine.list_quarantine', status='marked_safe') }}">Marked Safe</a></li>
+    <li class="nav-item"><a class="nav-link {{ 'active' if status=='deleted' }}" href="{{ url_for('quarantine.list_quarantine', status='deleted') }}">Deleted</a></li>
+</ul>
+
+{% if not items %}
+<div class="card"><div class="card-body empty-state">
+    <i class="fa-solid fa-shield"></i>
+    <h5>Nothing here</h5>
+    <p>Quarantined emails will appear here after a scan detects a threat.</p>
+</div></div>
+{% else %}
+<div class="card"><div class="card-body p-0">
+<div class="table-responsive">
+<table class="table table-hover mb-0 align-middle">
+    <thead><tr><th>Quarantined</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Score</th><th>Reason</th><th></th></tr></thead>
+    <tbody>
+    {% for item in items %}
+        <tr>
+            <td><small>{{ item.quarantined_at.strftime('%Y-%m-%d %H:%M') if item.quarantined_at else '-' }}</small></td>
+            <td>{{ item.email.sender }}</td>
+            <td><a href="{{ url_for('emails.detail', email_id=item.email_id) }}">{{ item.email.subject or '(no subject)' }}</a></td>
+            <td><span class="badge badge-{{ item.email.classification }}">{{ item.email.classification|replace('_',' ')|title }}</span></td>
+            <td>{{ item.email.threat_score }}</td>
+            <td><small>{{ item.reason }}</small></td>
+            <td class="text-nowrap">
+                {% if item.status == 'quarantined' %}
+                <form class="d-inline" method="POST" action="{{ url_for('quarantine.release', item_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-success">Release</button></form>
+                <form class="d-inline" method="POST" action="{{ url_for('quarantine.mark_safe', item_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-primary">Mark Safe</button></form>
+                <form class="d-inline" method="POST" action="{{ url_for('quarantine.delete', item_id=item.id) }}" data-confirm="Permanently delete this email?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+</div></div>
+{% endif %}
+{% endblock %}
