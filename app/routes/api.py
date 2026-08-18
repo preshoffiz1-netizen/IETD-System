@@ -13,7 +13,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required, login_user
 
 from app.extensions import csrf
-from app.models import DetectionRule, Email, Mailbox, QuarantineItem, RuleCondition, User
+from app.models import DetectionRule, Email, Mailbox, QuarantineItem, RuleAction, RuleCondition, User
 from app.services import mailbox_service, quarantine_service, report_service, scanner_service
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -33,7 +33,8 @@ def _mailbox_to_dict(m: Mailbox) -> dict:
 def _email_to_dict(e: Email) -> dict:
     return {
         "id": e.id, "sender": e.sender, "subject": e.subject, "classification": e.classification,
-        "threat_score": e.threat_score, "status": e.status, "action_taken": e.action_taken,
+        "threat_score": e.threat_score, "risk_percentage": e.risk_percentage,
+        "status": e.status, "action_taken": e.action_taken,
         "created_at": e.created_at.isoformat(),
     }
 
@@ -162,19 +163,36 @@ def api_create_rule():
     from app.extensions import db
 
     payload = request.get_json(silent=True) or {}
+    action = payload.get("action", "flag")
+    if action not in RuleAction.ALL:
+        action = "flag"
+    try:
+        score = max(1, min(150, int(payload.get("score", 10))))
+    except (TypeError, ValueError):
+        score = 10
+
     rule = DetectionRule(
         organization_id=current_user.organization_id, created_by_id=current_user.id,
         name=payload.get("name", "Untitled Rule"), description=payload.get("description", ""),
         category=payload.get("category", "custom"), severity=payload.get("severity", "medium"),
-        score=int(payload.get("score", 10)), action=payload.get("action", "flag"), is_custom=True,
+        score=score, action=action, is_custom=True,
     )
     db.session.add(rule)
     db.session.flush()
-    for i, condition in enumerate(payload.get("conditions", [])):
+    position = 0
+    for condition in payload.get("conditions", []):
+        field = condition.get("field")
+        operator = condition.get("operator", "contains")
+        value = (condition.get("value") or "").strip()
+        # Skip anything that isn't a real, evaluable condition instead of
+        # persisting garbage that the detection engine would never match.
+        if not value or field not in RuleCondition.FIELDS or operator not in RuleCondition.OPERATORS:
+            continue
         db.session.add(RuleCondition(
-            rule_id=rule.id, field=condition.get("field"), operator=condition.get("operator", "contains"),
-            value=condition.get("value", ""), joiner=condition.get("joiner", "AND"), position=i,
+            rule_id=rule.id, field=field, operator=operator,
+            value=value, joiner=condition.get("joiner", "AND"), position=position,
         ))
+        position += 1
     db.session.commit()
     return jsonify({"id": rule.id, "name": rule.name}), 201
 

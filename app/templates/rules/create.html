@@ -3,66 +3,136 @@
 {% block page_title %}Create Custom Rule{% endblock %}
 {% block content %}
 
-<div class="card" style="max-width:760px;"><div class="card-body">
+<div class="card" style="max-width:820px;"><div class="card-body">
+
+<p class="text-muted">
+    Pick a starting point below, or build your own from scratch. A rule watches incoming email for
+    something specific (a sender, a word, a link, an attachment) and flags or quarantines the message
+    when it matches.
+</p>
+
+<div class="row mb-4" id="preset-buttons">
+    {% for p in presets %}
+    <div class="col-md-6 mb-2">
+        <button type="button" class="btn btn-outline-primary w-100 text-start preset-btn"
+                data-field="{{ p.field }}" data-operator="{{ p.operator }}" data-severity="{{ p.severity }}"
+                data-action="{{ p.action }}" data-placeholder="{{ p.placeholder }}">
+            <span class="ico"><i class="fa-solid {{ p.icon }}"></i></span> {{ p.label }}
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="row">
-        <div class="col-md-6 mb-3"><label class="form-label">Rule name</label><input class="form-control" name="name" required placeholder="e.g. Crypto Investment Scam"></div>
-        <div class="col-md-6 mb-3"><label class="form-label">Category</label>
-            <select class="form-select" name="category">
-                <option value="spam">Spam</option><option value="scam">Scam</option><option value="phishing">Phishing</option>
-                <option value="url">URL</option><option value="attachment">Attachment</option><option value="custom" selected>Custom</option>
-            </select>
-        </div>
-    </div>
-    <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2"></textarea></div>
-    <div class="row">
-        <div class="col-md-4 mb-3"><label class="form-label">Score</label><input class="form-control" name="score" type="number" value="15" required></div>
-        <div class="col-md-4 mb-3"><label class="form-label">Severity</label>
-            <select class="form-select" name="severity">
-                <option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option>
-            </select>
-        </div>
-        <div class="col-md-4 mb-3"><label class="form-label">Action</label>
-            <select class="form-select" name="action">
-                {% for a in actions %}<option value="{{ a }}" {{ 'selected' if a == 'quarantine' }}>{{ a|replace('_',' ')|title }}</option>{% endfor %}
-            </select>
-        </div>
+
+    <div class="mb-3">
+        <label class="form-label">Rule name</label>
+        <input class="form-control" name="name" required placeholder="e.g. Block fake PayPal emails"
+               value="{{ form.name if form }}">
     </div>
 
     <hr>
-    <h6>Conditions</h6>
-    <p class="small text-muted">First row's joiner is ignored. Subsequent rows combine with the running result using AND / OR / NOT.</p>
+    <h6>What should this rule look for?</h6>
+    <p class="small text-muted mb-2">
+        Choose what to check, how to check it, and what value to match. Most rules only need one of these.
+    </p>
     <div id="condition-rows">
-        <div class="rule-condition-row">
-            <select class="form-select form-select-sm" name="condition_joiner" style="width:90px;">
-                <option value="AND">AND</option><option value="OR">OR</option><option value="NOT">NOT</option>
-            </select>
-            <select class="form-select form-select-sm" name="condition_field" style="width:170px;">
-                {% for f in fields %}<option value="{{ f }}">{{ f|replace('_',' ')|title }}</option>{% endfor %}
-            </select>
-            <select class="form-select form-select-sm" name="condition_operator" style="width:150px;">
-                {% for op in operators %}<option value="{{ op }}">{{ op|replace('_',' ')|title }}</option>{% endfor %}
-            </select>
-            <input class="form-control form-control-sm" name="condition_value" placeholder="value">
+        <div class="rule-condition-row row g-2 align-items-center mb-2">
+            <div class="col-md-4">
+                <select class="form-select" name="condition_field">
+                    <optgroup label="Common">
+                        {% for f in basic_fields %}<option value="{{ f }}">{{ field_labels.get(f, f) }}</option>{% endfor %}
+                    </optgroup>
+                    <optgroup label="Advanced (email security checks)">
+                        {% for f in advanced_fields %}<option value="{{ f }}">{{ field_labels.get(f, f) }}</option>{% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="condition_operator">
+                    {% for op in operators %}<option value="{{ op }}">{{ operator_labels.get(op, op) }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <input class="form-control" name="condition_value" placeholder="value to match, e.g. urgent wire transfer">
+                <input type="hidden" name="condition_joiner" value="AND">
+            </div>
         </div>
     </div>
     <template id="condition-row-template">
-        <div class="rule-condition-row">
-            <select class="form-select form-select-sm" name="condition_joiner" style="width:90px;">
-                <option value="AND">AND</option><option value="OR">OR</option><option value="NOT">NOT</option>
-            </select>
-            <select class="form-select form-select-sm" name="condition_field" style="width:170px;">
-                {% for f in fields %}<option value="{{ f }}">{{ f|replace('_',' ')|title }}</option>{% endfor %}
-            </select>
-            <select class="form-select form-select-sm" name="condition_operator" style="width:150px;">
-                {% for op in operators %}<option value="{{ op }}">{{ op|replace('_',' ')|title }}</option>{% endfor %}
-            </select>
-            <input class="form-control form-control-sm" name="condition_value" placeholder="value">
-            <button type="button" class="btn btn-sm btn-outline-danger remove-condition-btn"><i class="fa-solid fa-xmark"></i></button>
+        <div class="rule-condition-row row g-2 align-items-center mb-2">
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="condition_joiner">
+                    <option value="AND">AND</option><option value="OR">OR</option><option value="NOT">NOT</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" name="condition_field">
+                    {% for f in fields %}<option value="{{ f }}">{{ field_labels.get(f, f) }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" name="condition_operator">
+                    {% for op in operators %}<option value="{{ op }}">{{ operator_labels.get(op, op) }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input class="form-control form-control-sm" name="condition_value" placeholder="value">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-condition-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
         </div>
     </template>
-    <button type="button" id="add-condition-btn" class="btn btn-sm btn-outline-secondary mb-3"><i class="fa-solid fa-plus"></i> Add Condition</button>
+    <button type="button" id="add-condition-btn" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="fa-solid fa-plus"></i> Add another condition (advanced)
+    </button>
+
+    <hr>
+    <h6>What should happen when this matches?</h6>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">How serious is this?</label>
+            <select class="form-select" name="severity" id="severity-select">
+                <option value="low">Low - just keep an eye on it</option>
+                <option value="medium" selected>Medium - likely worth a second look</option>
+                <option value="high">High - probably dangerous</option>
+                <option value="critical">Critical - almost certainly an attack</option>
+            </select>
+            <div class="form-text">This sets how much this rule pushes an email's risk score up.</div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Action</label>
+            <select class="form-select" name="action" id="action-select">
+                {% for a in actions %}<option value="{{ a }}" {{ 'selected' if a == 'quarantine' }}>{{ a|replace('_',' ')|title }}</option>{% endfor %}
+            </select>
+            <div class="form-text">"Quarantine" holds the email in IETDS for review; it does not delete anything.</div>
+        </div>
+    </div>
+
+    <details class="mb-3">
+        <summary class="text-muted small" style="cursor:pointer;">Advanced settings (category, description, exact score)</summary>
+        <div class="row mt-2">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Category</label>
+                <select class="form-select" name="category">
+                    <option value="spam">Spam</option><option value="scam">Scam</option><option value="phishing">Phishing</option>
+                    <option value="url">URL</option><option value="attachment">Attachment</option><option value="custom" selected>Custom</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Exact score override</label>
+                <input class="form-control" name="score" type="number" min="1" max="150"
+                       placeholder="leave blank to use the default for the severity above">
+                <div class="form-text">Only change this if you know what the existing scoring scale means.</div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Description (optional, for your own reference)</label>
+            <textarea class="form-control" name="description" rows="2"></textarea>
+        </div>
+    </details>
 
     <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Create Rule</button>
@@ -70,4 +140,31 @@
     </div>
 </form>
 </div></div>
+
+<script>
+document.querySelectorAll('.preset-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var row = document.querySelector('#condition-rows .rule-condition-row');
+        row.querySelector('[name="condition_field"]').value = btn.dataset.field;
+        row.querySelector('[name="condition_operator"]').value = btn.dataset.operator;
+        var valueInput = row.querySelector('[name="condition_value"]');
+        valueInput.placeholder = btn.dataset.placeholder || '';
+        valueInput.focus();
+        document.getElementById('severity-select').value = btn.dataset.severity;
+        document.getElementById('action-select').value = btn.dataset.action;
+        document.querySelectorAll('.preset-btn').forEach(function (b) { b.classList.remove('btn-primary'); b.classList.add('btn-outline-primary'); });
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-primary');
+    });
+});
+
+document.getElementById('add-condition-btn').addEventListener('click', function () {
+    var tpl = document.getElementById('condition-row-template');
+    var clone = tpl.content.cloneNode(true);
+    clone.querySelector('.remove-condition-btn').addEventListener('click', function (e) {
+        e.target.closest('.rule-condition-row').remove();
+    });
+    document.getElementById('condition-rows').appendChild(clone);
+});
+</script>
 {% endblock %}

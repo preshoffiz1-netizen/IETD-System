@@ -80,6 +80,12 @@ class Email(db.Model, TimestampMixin):
     )
     feedback_entries = db.relationship("Feedback", back_populates="email", cascade="all, delete-orphan")
 
+    @property
+    def risk_percentage(self) -> int:
+        """0-100 risk percentage for display -- see classification_service.risk_percentage."""
+        from app.services.classification_service import risk_percentage as _risk_percentage
+        return _risk_percentage(self.threat_score)
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Email {self.subject!r} from {self.sender}>"
 

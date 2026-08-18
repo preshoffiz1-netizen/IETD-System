@@ -46,3 +46,39 @@ def test_classify_within_app_context(app):
 
         # High risk with scam evidence dominant -> SCAM.
         assert classify(ScoreBreakdown(total_score=70, scam_score=50, phishing_score=10)) == Classification.SCAM
+
+
+def test_risk_percentage_clamps_to_0_100():
+    """
+    End-user-facing risk % (Section 26 usability follow-up): a raw score of 0
+    is 0%, a raw score of 100+ (many stacked rule hits) caps at 100% instead
+    of showing something confusing like "340% risk".
+    """
+    from app.services.classification_service import risk_percentage
+
+    assert risk_percentage(0) == 0
+    assert risk_percentage(19) == 19
+    assert risk_percentage(60) == 60
+    assert risk_percentage(100) == 100
+    assert risk_percentage(340) == 100
+    assert risk_percentage(-5) == 0  # defensive; scores shouldn't go negative but don't show "-5%" if they do
+
+
+def test_email_and_threat_analysis_expose_risk_percentage(app, db, organization, admin_user):
+    """The raw score->percentage conversion is reachable straight off the models
+    templates already render (`email.risk_percentage`, `threat_analysis.risk_percentage`),
+    not just as a standalone function."""
+    from app.models import Email, ThreatAnalysis
+    from app.services import mailbox_service
+
+    mailbox = mailbox_service.create_demo_mailbox(organization_id=organization.id, user_id=admin_user.id)
+    email = Email(mailbox_id=mailbox.id, dedup_key="risk-pct-test", sender="a@example.com",
+                  classification="spam", threat_score=45)
+    db.session.add(email)
+    db.session.flush()
+    analysis = ThreatAnalysis(email_id=email.id, total_score=145, classification="phishing")
+    db.session.add(analysis)
+    db.session.commit()
+
+    assert email.risk_percentage == 45
+    assert analysis.risk_percentage == 100  # clamped

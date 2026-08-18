@@ -83,13 +83,16 @@
 
 <div class="col-md-4">
     <div class="card mb-3"><div class="card-body">
-        <h6 class="card-title">Threat Score: {{ email.threat_score }}</h6>
+        <h6 class="card-title">Risk: {{ email.risk_percentage }}%</h6>
         {% if email.threat_analysis %}
-        <table class="table table-sm">
-            {% for key, value in email.threat_analysis.score_breakdown().items() %}
-                {% if value %}<tr><td>{{ key|replace('_',' ')|title }}</td><td class="text-end">+{{ value }}</td></tr>{% endif %}
-            {% endfor %}
-        </table>
+        <details>
+            <summary class="text-muted small" style="cursor:pointer;">Detailed rule breakdown (advanced)</summary>
+            <table class="table table-sm mt-2">
+                {% for key, value in email.threat_analysis.score_breakdown().items() %}
+                    {% if value %}<tr><td>{{ key|replace('_',' ')|title }}</td><td class="text-end">+{{ value }} pts</td></tr>{% endif %}
+                {% endfor %}
+            </table>
+        </details>
         <hr>
         <h6>Triggered Rules ({{ email.threat_analysis.indicators|length }})</h6>
         {% for ind in email.threat_analysis.indicators %}

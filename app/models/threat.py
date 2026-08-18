@@ -38,6 +38,12 @@ class ThreatAnalysis(db.Model, TimestampMixin):
         order_by="desc(ThreatIndicator.score_contribution)",
     )
 
+    @property
+    def risk_percentage(self) -> int:
+        """0-100 risk percentage for display -- see classification_service.risk_percentage."""
+        from app.services.classification_service import risk_percentage as _risk_percentage
+        return _risk_percentage(self.total_score)
+
     def score_breakdown(self) -> dict:
         return {
             "sender_score": self.sender_score,

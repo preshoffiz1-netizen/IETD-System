@@ -20,7 +20,7 @@
 <div class="card"><div class="card-body p-0">
 <div class="table-responsive">
 <table class="table table-hover mb-0 align-middle">
-    <thead><tr><th>Quarantined</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Score</th><th>Reason</th><th></th></tr></thead>
+    <thead><tr><th>Quarantined</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Risk</th><th>Reason</th><th></th></tr></thead>
     <tbody>
     {% for item in items %}
         <tr>
@@ -28,7 +28,7 @@
             <td>{{ item.email.sender }}</td>
             <td><a href="{{ url_for('emails.detail', email_id=item.email_id) }}">{{ item.email.subject or '(no subject)' }}</a></td>
             <td><span class="badge badge-{{ item.email.classification }}">{{ item.email.classification|replace('_',' ')|title }}</span></td>
-            <td>{{ item.email.threat_score }}</td>
+            <td>{{ item.email.risk_percentage }}%</td>
             <td><small>{{ item.reason }}</small></td>
             <td class="text-nowrap">
                 {% if item.status == 'quarantined' %}

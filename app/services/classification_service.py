@@ -54,6 +54,22 @@ def classify(breakdown: ScoreBreakdown) -> str:
     return Classification.MALICIOUS_ATTACHMENT
 
 
+def risk_percentage(total_score: int) -> int:
+    """
+    Convert a raw rule-point total into an end-user-facing 0-100 risk
+    percentage (Section 26 usability follow-up -- non-technical end users
+    have no reference point for "this email scored 47 points", but "47%
+    risk" is immediately legible).
+
+    The default thresholds (clean <= 19, suspicious <= 39, spam <= 59, high
+    risk >= 60) were already chosen to read like a 0-100 scale, so this is
+    mostly a clamp: a heavily-flagged email that stacks many rule hits can
+    exceed 100 raw points, and this caps the *display* at 100% without
+    changing the underlying score used for classification/actions.
+    """
+    return max(0, min(100, round(total_score)))
+
+
 def risk_level(classification: str) -> str:
     """Human-friendly grouping used by the UI (e.g. badge colour)."""
     if classification == Classification.CLEAN:

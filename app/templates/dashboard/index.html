@@ -81,7 +81,7 @@
     {% if recent_threats %}
     <div class="table-responsive">
     <table class="table table-hover align-middle">
-        <thead><tr><th>Time</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Score</th><th>Action</th><th>Status</th></tr></thead>
+        <thead><tr><th>Time</th><th>Sender</th><th>Subject</th><th>Classification</th><th>Risk</th><th>Action</th><th>Status</th></tr></thead>
         <tbody>
         {% for e in recent_threats %}
             <tr>
@@ -89,7 +89,7 @@
                 <td>{{ e.sender }}</td>
                 <td><a href="{{ url_for('emails.detail', email_id=e.id) }}">{{ e.subject or '(no subject)' }}</a></td>
                 <td><span class="badge badge-{{ e.classification }}">{{ e.classification|replace('_',' ')|title }}</span></td>
-                <td>{{ e.threat_score }}</td>
+                <td>{{ e.risk_percentage }}%</td>
                 <td><small>{{ e.action_taken or '-' }}</small></td>
                 <td><small>{{ e.status }}</small></td>
             </tr>
