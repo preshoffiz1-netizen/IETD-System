@@ -44,9 +44,15 @@ class Config:
     # NOTE: Flask-SQLAlchemy resolves a *relative* sqlite:/// path against the
     # app's instance/ folder automatically (Flask-SQLAlchemy >= 3.0). The
     # absolute fallback below is used only if DATABASE_URL is unset.
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
+    _database_url = os.environ.get(
         "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'ietds.db')}"
     )
+    # Some hosts (Render, Heroku, and others) still hand out `postgres://` --
+    # SQLAlchemy 1.4+/2.x requires the `postgresql://` scheme, so normalize it
+    # here rather than making every deployment target remember to fix it.
+    if _database_url.startswith("postgres://"):
+        _database_url = _database_url.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URI = _database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 

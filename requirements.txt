@@ -16,6 +16,7 @@ email-validator==2.2.0
 requests==2.32.3
 tldextract==5.1.2
 gunicorn==23.0.0
+psycopg2-binary==2.9.9  # Postgres driver -- needed once DATABASE_URL points at Postgres (e.g. Render, Supabase)
 google-auth==2.34.0
 google-auth-oauthlib==1.2.1
 google-api-python-client==2.146.0

@@ -1,0 +1,44 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec) -- lets Render provision
+# the web service (and, optionally, a managed Postgres database) from this one file
+# instead of clicking through every setting by hand. Use it via Render's dashboard:
+# New -> Blueprint -> point at this repo.
+#
+# Free tier note: Render's free web services spin down after ~15 minutes idle and take
+# ~30-60s to wake back up on the next request -- fine for a final-year-project demo link,
+# not for "always instantly responsive." Upgrade the plan later if that matters.
+databases:
+  - name: ietds-db
+    plan: free
+    databaseName: ietds
+    user: ietds
+
+services:
+  - type: web
+    name: ietds
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    # -w 1: the in-process APScheduler-based background scanner (app/services/scheduler.py)
+    # is only safe with a single worker process -- more than one would each independently
+    # start their own scheduler and double/triple-scan every mailbox. See docs/deployment.md
+    # for the Celery-based alternative if you ever need to scale past one worker.
+    startCommand: "gunicorn -w 1 -b 0.0.0.0:$PORT wsgi:app"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false  # set manually -- must be a real Fernet key, see docs/render-deploy.md
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ietds-db
+          property: connectionString
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REDIRECT_URI
+        sync: false  # set to https://<your-render-url>/mailboxes/oauth/gmail/callback once you know the URL
