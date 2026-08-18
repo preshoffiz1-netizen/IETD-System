@@ -28,6 +28,13 @@ class User(db.Model, UserMixin, TimestampMixin):
     is_active_flag = db.Column("is_active", db.Boolean, default=True, nullable=False)
     last_login_at = db.Column(db.DateTime, nullable=True)
 
+    # Platform-level flag, completely separate from `role`/org-scoped admin
+    # checks -- deliberately so a super admin can't be created by loosening
+    # per-organization access control. Only ever set by the
+    # `flask create-super-admin` CLI command (see app/cli.py), never through
+    # any web route, so a compromised org account can't grant it to itself.
+    is_super_admin = db.Column(db.Boolean, default=False, nullable=False)
+
     organization = db.relationship("Organization", back_populates="users")
     mailboxes = db.relationship("Mailbox", back_populates="owner", cascade="all, delete-orphan")
     settings = db.relationship("UserSetting", back_populates="user", cascade="all, delete-orphan")

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Super Admin - Platform Overview{% endblock %}
+{% block page_title %}Platform Overview{% endblock %}
+{% block content %}
+
+<p class="text-muted">
+    Platform-wide, read-only. This never shows another organization's email content -- only counts and
+    activity, so you can track how IETDS is doing without being able to see what any individual user is
+    doing with their mailbox. Your own account still works exactly like any regular user's everywhere
+    else in the app.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.total_orgs }}</div><div class="stat-label">Organizations</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.total_users }}</div><div class="stat-label">Users</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.total_mailboxes }}</div><div class="stat-label">Connected Mailboxes</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.monitored_mailboxes }}</div><div class="stat-label">Actively Monitored</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.total_emails_scanned }}</div><div class="stat-label">Emails Scanned (all time)</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value">{{ overview.emails_last_24h }}</div><div class="stat-label">Emails Scanned (24h)</div></div></div>
+    <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-value text-danger">{{ overview.threats_last_24h }}</div><div class="stat-label">Threats Flagged (24h)</div></div></div>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <h6 class="card-title">Organizations</h6>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Organization</th><th>Signed up</th><th>Users</th><th>Mailboxes</th><th>Emails scanned</th></tr></thead>
+        <tbody>
+        {% for row in organizations %}
+            <tr>
+                <td>{{ row.organization.name }}</td>
+                <td><small>{{ row.organization.created_at.strftime('%Y-%m-%d') }}</small></td>
+                <td>{{ row.user_count }}</td>
+                <td>{{ row.mailbox_count }}</td>
+                <td>{{ row.email_count }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" class="text-muted">No organizations yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div></div>
+
+<div class="card"><div class="card-body">
+    <h6 class="card-title">Mailboxes currently erroring</h6>
+    <p class="small text-muted">Surfaces connection/scan problems (e.g. an expired OAuth grant, a timeout) across every organization, without showing you the mailbox's actual email content.</p>
+    <div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Mailbox</th><th>Provider</th><th>Status message</th><th>Last updated</th></tr></thead>
+        <tbody>
+        {% for mb in unhealthy_mailboxes %}
+            <tr>
+                <td>{{ mb.email_address }}</td>
+                <td><small>{{ mb.provider|upper }}</small></td>
+                <td><small>{{ mb.status_message or '-' }}</small></td>
+                <td><small>{{ mb.updated_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" class="text-muted">No mailboxes currently in an error state.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div></div>
+
+{% endblock %}

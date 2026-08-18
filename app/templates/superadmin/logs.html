@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Super Admin - App Logs{% endblock %}
+{% block page_title %}App Logs{% endblock %}
+{% block content %}
+
+<p class="text-muted">
+    The most recent 200 log lines from IETDS itself (scan runs, scheduler ticks, OAuth/IMAP errors, etc.),
+    kept in memory since this process started -- not a substitute for real log aggregation on a
+    multi-instance production deployment, but enough to see what's going wrong right now without SSH access.
+</p>
+
+<div class="mb-3">
+    <div class="btn-group btn-group-sm">
+        <a class="btn btn-outline-secondary {% if not level %}active{% endif %}" href="{{ url_for('superadmin.logs') }}">All</a>
+        <a class="btn btn-outline-secondary {% if level == 'ERROR' %}active{% endif %}" href="{{ url_for('superadmin.logs', level='ERROR') }}">Errors</a>
+        <a class="btn btn-outline-secondary {% if level == 'WARNING' %}active{% endif %}" href="{{ url_for('superadmin.logs', level='WARNING') }}">Warnings</a>
+        <a class="btn btn-outline-secondary {% if level == 'INFO' %}active{% endif %}" href="{{ url_for('superadmin.logs', level='INFO') }}">Info</a>
+    </div>
+</div>
+
+<div class="card"><div class="card-body p-0">
+<div class="table-responsive" style="max-height:70vh;overflow-y:auto;">
+<table class="table table-sm table-hover mb-0 align-middle">
+    <thead><tr><th>Time (UTC)</th><th>Level</th><th>Logger</th><th>Message</th></tr></thead>
+    <tbody>
+    {% for entry in logs %}
+        <tr>
+            <td><small class="text-nowrap">{{ entry.time }}</small></td>
+            <td><span class="badge text-bg-{{ 'danger' if entry.level == 'ERROR' else 'warning' if entry.level == 'WARNING' else 'secondary' }}">{{ entry.level }}</span></td>
+            <td><small>{{ entry.logger }}</small></td>
+            <td><small>{{ entry.message }}</small></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="4" class="text-muted p-3">No log entries captured yet this run.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+</div></div>
+{% endblock %}

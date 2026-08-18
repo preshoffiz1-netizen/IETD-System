@@ -203,6 +203,35 @@ malicious attachment, and a brand-impersonation/spoofing attempt. Click **Scan N
 the full pipeline against them without connecting any real account. No real person's email
 content is used anywhere in the demo fixtures.
 
+## 15b. Super Admin Portal (platform owner only)
+
+A separate, read-only "Super Admin" section of the app for the developer running the
+deployment - not for regular end users, and not for acting on any individual user's mailbox
+or email content. It shows: total organizations/users/mailboxes, emails scanned system-wide
+(all-time and last 24h), which mailboxes are currently erroring, a cross-organization user
+list, and a live tail of the app's own recent log lines (errors/warnings/info) straight from
+the browser - no shell access needed to see what's going wrong.
+
+Nobody gets this by default, including the account that registers first. Grant it explicitly:
+
+```bash
+flask --app run.py create-super-admin you@gmail.com      # local dev
+flask --app wsgi:app create-super-admin you@gmail.com     # production
+flask --app wsgi:app revoke-super-admin you@gmail.com     # to undo
+```
+
+There is deliberately no web route or UI toggle that can grant this - only that CLI command,
+run directly on the machine - so a compromised account can never grant itself platform-wide
+visibility. It's a completely separate flag (`User.is_super_admin`) from the existing
+per-organization `is_admin`/role checks, kept in its own service module
+(`app/services/superadmin_service.py`) with its own decorator
+(`app/utils/decorators.py:super_admin_required`), specifically so it can never be satisfied by
+loosening (or reusing) the org-scoped access control that the IDOR tests above depend on.
+
+A super admin account is otherwise a completely ordinary account - same organization, own
+mailboxes, own rules, everything else in the app works identically - so you can use one login
+to both try IETDS as a real end user would and see the platform-wide picture.
+
 ## 16. Security Notes
 
 - Passwords are hashed with Argon2 (never stored in plaintext).

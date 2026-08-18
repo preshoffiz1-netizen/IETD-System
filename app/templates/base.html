@@ -36,6 +36,12 @@
             <li class="nav-item"><a class="nav-link {% if request.endpoint == 'admin.audit_log' %}active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="fa-solid fa-scroll"></i> Audit Log</a></li>
             {% endif %}
             <li class="nav-item"><a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}"><i class="fa-solid fa-sliders"></i> Settings</a></li>
+            {% if current_user.is_authenticated and current_user.is_super_admin %}
+            <li class="nav-item sidebar-section">Super Admin</li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'superadmin.index' %}active{% endif %}" href="{{ url_for('superadmin.index') }}"><i class="fa-solid fa-user-shield"></i> Platform Overview</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'superadmin.users' %}active{% endif %}" href="{{ url_for('superadmin.users') }}"><i class="fa-solid fa-globe"></i> All Users</a></li>
+            <li class="nav-item"><a class="nav-link {% if request.endpoint == 'superadmin.logs' %}active{% endif %}" href="{{ url_for('superadmin.logs') }}"><i class="fa-solid fa-terminal"></i> App Logs</a></li>
+            {% endif %}
         </ul>
     </nav>
 

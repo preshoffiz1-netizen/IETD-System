@@ -33,9 +33,13 @@ def create_app(config_name: str | None = None) -> Flask:
     from app.routes import register_blueprints
     register_blueprints(app)
 
+    from app.cli import register_cli
+    register_cli(app)
+
     with app.app_context():
         from app import models  # noqa: F401 ensure models are registered with SQLAlchemy
         db.create_all()
+        _apply_schema_patches()
         from app.services import settings_service
         settings_service.ensure_defaults()
 
@@ -58,6 +62,32 @@ def _init_logging(app: Flask) -> None:
     # anything reaches the logger, but we also keep werkzeug's default access
     # log at INFO (no header/body dumping) to avoid accidental credential leaks.
     logging.getLogger("werkzeug").setLevel(logging.WARNING if not app.debug else logging.INFO)
+
+    if not app.config.get("TESTING"):
+        from app.utils.log_buffer import install as install_log_buffer
+        install_log_buffer()
+
+
+def _apply_schema_patches() -> None:
+    """
+    This project uses `db.create_all()` instead of versioned Alembic
+    migrations (see README section 9), which only creates *missing tables* --
+    it silently does nothing for a new column added to an existing table on
+    someone's already-created local database file. This patches those in by
+    hand, one at a time, so upgrading doesn't require deleting your local
+    database. Safe to run every startup: each patch checks first.
+    """
+    from sqlalchemy import inspect, text
+
+    from app.extensions import db
+
+    inspector = inspect(db.engine)
+    if "users" not in inspector.get_table_names():
+        return  # fresh DB, db.create_all() above already created the column
+    existing_columns = {col["name"] for col in inspector.get_columns("users")}
+    if "is_super_admin" not in existing_columns:
+        with db.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN NOT NULL DEFAULT 0"))
 
 
 def _init_extensions(app: Flask) -> None:

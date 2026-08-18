@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def register_blueprints(app) -> None:
-    from app.routes import admin, api, auth, blacklist, dashboard, emails, health, mailbox, quarantine, reports, rules, settings, whitelist
+    from app.routes import admin, api, auth, blacklist, dashboard, emails, health, mailbox, quarantine, reports, rules, settings, superadmin, whitelist
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
@@ -17,5 +17,6 @@ def register_blueprints(app) -> None:
     app.register_blueprint(reports.bp)
     app.register_blueprint(settings.bp)
     app.register_blueprint(admin.bp)
+    app.register_blueprint(superadmin.bp)
     app.register_blueprint(health.bp)
     app.register_blueprint(api.bp)
