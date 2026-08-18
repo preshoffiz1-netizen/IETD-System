@@ -62,14 +62,12 @@ class Config:
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
 
     # --- OAuth providers (Section 6) ------------------------------------------
+    # Microsoft 365/Outlook (Graph API) support was removed from this deployment -
+    # see docs/limitations.md. Gmail OAuth and generic IMAP are the two supported
+    # mailbox connection paths tested for this project.
     GMAIL_CLIENT_ID = os.environ.get("GMAIL_CLIENT_ID", "")
     GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET", "")
     GMAIL_REDIRECT_URI = os.environ.get("GMAIL_REDIRECT_URI", "")
-
-    MICROSOFT_CLIENT_ID = os.environ.get("MICROSOFT_CLIENT_ID", "")
-    MICROSOFT_CLIENT_SECRET = os.environ.get("MICROSOFT_CLIENT_SECRET", "")
-    MICROSOFT_TENANT_ID = os.environ.get("MICROSOFT_TENANT_ID", "common")
-    MICROSOFT_REDIRECT_URI = os.environ.get("MICROSOFT_REDIRECT_URI", "")
 
     # --- Background worker (Section 4 / 37) -------------------------------------
     SCHEDULER_BACKEND = os.environ.get("SCHEDULER_BACKEND", "apscheduler")

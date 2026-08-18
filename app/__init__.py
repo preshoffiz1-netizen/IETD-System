@@ -80,7 +80,7 @@ def _init_extensions(app: Flask) -> None:
             "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             "img-src 'self' data: https:; "
-            "font-src 'self' https://cdn.jsdelivr.net;"
+            "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;"
         )
         if app.config.get("SESSION_COOKIE_SECURE"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

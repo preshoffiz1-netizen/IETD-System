@@ -1,8 +1,8 @@
 """
 Provider abstraction (Section 5).
 
-Every mailbox provider (generic IMAP, Gmail, Microsoft Graph, and any future
-provider) implements this interface. The rest of the application -- the
+Every mailbox provider (generic IMAP, Gmail, and any future provider)
+implements this interface. The rest of the application -- the
 scanner service, the detection engine, the UI -- only ever talks to a
 `MailboxProvider`, never to `imaplib` or a vendor SDK directly. This is what
 lets a Gmail mailbox and a generic IMAP mailbox flow through the exact same

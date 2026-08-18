@@ -9,12 +9,22 @@ should ever decrypt a mailbox credential.
 from __future__ import annotations
 
 import json
+import logging
+import time
+
+from flask import current_app
 
 from app.extensions import db
 from app.models import Mailbox, MailboxStatus, ProviderType
-from app.providers import DemoProvider, GmailProvider, IMAPProvider, MicrosoftGraphProvider
+from app.providers import DemoProvider, GmailProvider, IMAPProvider
 from app.services import audit_service
 from app.utils.security import decrypt_secret, encrypt_secret
+
+logger = logging.getLogger("ietds.services.mailbox")
+
+# Refresh an OAuth access token this many seconds before it actually expires,
+# so a scan that starts right at the boundary doesn't race an expired token.
+_TOKEN_REFRESH_SKEW_SECONDS = 120
 
 
 def create_imap_mailbox(*, organization_id: str, user_id: str, email_address: str,
@@ -91,14 +101,55 @@ def get_decrypted_oauth_token(mailbox: Mailbox) -> dict:
     return json.loads(decrypt_secret(mailbox.encrypted_oauth_token))
 
 
+def _token_is_expired(token: dict) -> bool:
+    obtained_at = token.get("obtained_at")
+    expires_in = token.get("expires_in")
+    if obtained_at is None or not expires_in:
+        # No expiry info recorded (e.g. an older token) - let the provider try
+        # and surface a normal auth error if it turns out to be stale.
+        return False
+    return time.time() >= (obtained_at + expires_in - _TOKEN_REFRESH_SKEW_SECONDS)
+
+
+def _ensure_fresh_oauth_token(mailbox: Mailbox, token: dict) -> dict:
+    """
+    Gmail access tokens expire (~1 hour). If we're holding a refresh token and
+    the access token is expired or about to be, silently refresh it and
+    persist the new one - this is what makes continuous background monitoring
+    keep working past the first hour, like any normal OAuth app.
+    """
+    if not token.get("refresh_token") or not _token_is_expired(token):
+        return token
+
+    try:
+        if mailbox.provider == ProviderType.GMAIL:
+            from app.providers.gmail_provider import refresh_access_token
+            new_token = refresh_access_token(
+                current_app.config["GMAIL_CLIENT_ID"],
+                current_app.config["GMAIL_CLIENT_SECRET"],
+                token["refresh_token"],
+            )
+        else:
+            return token
+    except Exception as exc:  # noqa: BLE001 - any refresh failure just falls back to the old token
+        logger.warning("OAuth token refresh failed for mailbox %s: %s", mailbox.id, exc)
+        return token
+
+    # The refresh response usually omits refresh_token (it doesn't rotate) -
+    # keep the one we already have unless a new one was issued.
+    new_token.setdefault("refresh_token", token["refresh_token"])
+    new_token["obtained_at"] = time.time()
+    update_oauth_token(mailbox, new_token)
+    return new_token
+
+
 def build_provider(mailbox: Mailbox):
     """Instantiate the correct MailboxProvider for a Mailbox row, with decrypted credentials."""
     if mailbox.provider == ProviderType.IMAP:
         return IMAPProvider(mailbox, password=get_decrypted_password(mailbox))
     if mailbox.provider == ProviderType.GMAIL:
-        return GmailProvider(mailbox, oauth_token=get_decrypted_oauth_token(mailbox))
-    if mailbox.provider == ProviderType.MICROSOFT:
-        return MicrosoftGraphProvider(mailbox, oauth_token=get_decrypted_oauth_token(mailbox))
+        token = _ensure_fresh_oauth_token(mailbox, get_decrypted_oauth_token(mailbox))
+        return GmailProvider(mailbox, oauth_token=token)
     if mailbox.provider == ProviderType.DEMO:
         return DemoProvider(mailbox)
     raise ValueError(f"Unknown provider type: {mailbox.provider}")

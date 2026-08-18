@@ -10,12 +10,10 @@ from app.providers.base import (
 from app.providers.demo_provider import DemoProvider
 from app.providers.gmail_provider import GmailProvider
 from app.providers.imap_provider import IMAPProvider
-from app.providers.microsoft_provider import MicrosoftGraphProvider
 
 _PROVIDER_REGISTRY = {
     "imap": IMAPProvider,
     "gmail": GmailProvider,
-    "microsoft": MicrosoftGraphProvider,
     "demo": DemoProvider,
 }
 
@@ -36,7 +34,6 @@ __all__ = [
     "ProviderCapabilityError",
     "IMAPProvider",
     "GmailProvider",
-    "MicrosoftGraphProvider",
     "DemoProvider",
     "get_provider_class",
     "available_providers",

@@ -12,7 +12,7 @@ Services (app/services)         <- Business logic: scanning, scoring, classifica
     |
 Detection (app/detection)       <- Pure, stateless rule-based detectors
     |
-Providers (app/providers)       <- Mailbox access abstraction (IMAP/Gmail/Microsoft/Demo)
+Providers (app/providers)       <- Mailbox access abstraction (IMAP/Gmail/Demo)
     |
 Models (app/models)             <- SQLAlchemy ORM / persistence
 ```

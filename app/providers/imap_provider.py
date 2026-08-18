@@ -42,6 +42,13 @@ class IMAPProvider(MailboxProvider):
         self._password = password
         self._conn: imaplib.IMAP4 | None = None
 
+    # Slow home/campus wifi and Gmail's own IMAP endpoint occasionally take
+    # longer than a few seconds to respond, especially during the initial
+    # TLS handshake+login. 15s was too tight in practice (observed repeated
+    # `TimeoutError` during scheduled scans); 30s gives real-world networks
+    # enough headroom without hanging a scan indefinitely.
+    CONNECT_TIMEOUT_SECONDS = 30
+
     def connect(self) -> None:
         host = self.mailbox.imap_host
         port = self.mailbox.imap_port or (993 if self.mailbox.imap_use_ssl else 143)
@@ -52,13 +59,38 @@ class IMAPProvider(MailboxProvider):
 
         try:
             if self.mailbox.imap_use_ssl:
-                self._conn = imaplib.IMAP4_SSL(host, port, timeout=15)
+                self._conn = imaplib.IMAP4_SSL(host, port, timeout=self.CONNECT_TIMEOUT_SECONDS)
             else:
-                self._conn = imaplib.IMAP4(host, port, timeout=15)
+                self._conn = imaplib.IMAP4(host, port, timeout=self.CONNECT_TIMEOUT_SECONDS)
                 self._conn.starttls()
             self._conn.login(username, self._password or "")
         except (imaplib.IMAP4.error, socket.error, OSError) as exc:
             raise ProviderAuthError(f"Unable to connect to {host}:{port} - {exc}") from exc
+
+    def _reconnect(self) -> None:
+        """Drop the (possibly dead) connection and open a fresh one."""
+        try:
+            if self._conn is not None:
+                self._conn.logout()
+        except Exception:
+            pass
+        self._conn = None
+        self.connect()
+
+    def _with_retry(self, fn):
+        """
+        Run an IMAP operation, and on a transient network failure (timeout,
+        dropped socket, aborted command -- all observed in real-world scan
+        logs against imap.gmail.com), reconnect once and retry exactly once
+        before giving up. This keeps a single flaky round-trip from failing
+        an entire scheduled scan.
+        """
+        try:
+            return fn()
+        except (socket.timeout, TimeoutError, imaplib.IMAP4.abort, OSError) as exc:
+            logger.warning("IMAP operation failed (%s), reconnecting and retrying once", exc)
+            self._reconnect()
+            return fn()
 
     def disconnect(self) -> None:
         if self._conn is not None:
@@ -104,40 +136,46 @@ class IMAPProvider(MailboxProvider):
         return folders or ["INBOX"]
 
     def list_messages(self, folder: str = "INBOX", limit: int = 50) -> list[str]:
-        conn = self._require_conn()
-        status, _ = conn.select(folder, readonly=True)
-        if status != "OK":
-            raise ProviderAuthError(f"Unable to select folder '{folder}'.")
-        status, data = conn.uid("search", None, "ALL")
-        if status != "OK" or not data or not data[0]:
-            return []
-        uids = data[0].split()
-        uids = [u.decode() if isinstance(u, bytes) else u for u in uids]
-        # Most recent last -> return most recent `limit`, oldest first for stable processing
-        return uids[-limit:] if limit else uids
+        def _do():
+            conn = self._require_conn()
+            status, _ = conn.select(folder, readonly=True)
+            if status != "OK":
+                raise ProviderAuthError(f"Unable to select folder '{folder}'.")
+            status, data = conn.uid("search", None, "ALL")
+            if status != "OK" or not data or not data[0]:
+                return []
+            uids = data[0].split()
+            uids = [u.decode() if isinstance(u, bytes) else u for u in uids]
+            # Most recent last -> return most recent `limit`, oldest first for stable processing
+            return uids[-limit:] if limit else uids
+
+        return self._with_retry(_do)
 
     def fetch_message(self, uid: str, folder: str = "INBOX") -> RawMessage:
-        conn = self._require_conn()
-        conn.select(folder, readonly=True)
-        status, data = conn.uid("fetch", uid, "(RFC822 INTERNALDATE)")
-        if status != "OK" or not data or data[0] is None:
-            raise ProviderAuthError(f"Unable to fetch message UID {uid}.")
+        def _do():
+            conn = self._require_conn()
+            conn.select(folder, readonly=True)
+            status, data = conn.uid("fetch", uid, "(RFC822 INTERNALDATE)")
+            if status != "OK" or not data or data[0] is None:
+                raise ProviderAuthError(f"Unable to fetch message UID {uid}.")
 
-        raw_bytes = b""
-        internal_date = None
-        for part in data:
-            if isinstance(part, tuple) and len(part) == 2:
-                raw_bytes = part[1]
-            elif isinstance(part, bytes) and b"INTERNALDATE" in part:
-                internal_date = None  # parsed defensively below if needed
+            raw_bytes = b""
+            internal_date = None
+            for part in data:
+                if isinstance(part, tuple) and len(part) == 2:
+                    raw_bytes = part[1]
+                elif isinstance(part, bytes) and b"INTERNALDATE" in part:
+                    internal_date = None  # parsed defensively below if needed
 
-        return RawMessage(
-            provider_uid=uid,
-            message_id=None,  # populated later by the email parser from headers
-            raw_bytes=raw_bytes,
-            folder=folder,
-            internal_date=internal_date or datetime.now(timezone.utc),
-        )
+            return RawMessage(
+                provider_uid=uid,
+                message_id=None,  # populated later by the email parser from headers
+                raw_bytes=raw_bytes,
+                folder=folder,
+                internal_date=internal_date or datetime.now(timezone.utc),
+            )
+
+        return self._with_retry(_do)
 
     def move_message(self, uid: str, destination_folder: str, folder: str = "INBOX") -> bool:
         conn = self._require_conn()

@@ -34,6 +34,14 @@ def init_scheduler(app) -> BackgroundScheduler:
         minutes=1,
         id="ietds_monitor_dispatch",
         replace_existing=True,
+        # A slow IMAP round-trip (retries, timeouts) can make one tick run
+        # longer than the 1-minute interval; without this, APScheduler skips
+        # the next tick entirely and logs a "maximum number of running
+        # instances reached" warning instead of just letting the two
+        # overlap safely (each tick only touches mailboxes whose interval
+        # has actually elapsed, so overlap is harmless).
+        max_instances=2,
+        coalesce=True,
     )
     scheduler.start()
     _scheduler = scheduler
@@ -56,7 +64,7 @@ def _run_all_monitored_mailboxes(app) -> None:
     single-job-fans-out-to-many-mailboxes design avoids registering/
     unregistering a job per mailbox as monitoring is toggled.
     """
-    from datetime import timedelta
+    from datetime import timedelta, timezone
 
     from app.extensions import db
     from app.models import Mailbox
@@ -73,7 +81,13 @@ def _run_all_monitored_mailboxes(app) -> None:
         now = utcnow()
         for mailbox in mailboxes:
             interval = timedelta(minutes=mailbox.scan_interval_minutes or 5)
-            if mailbox.last_scan_at and (now - mailbox.last_scan_at) < interval:
+            last_scan_at = mailbox.last_scan_at
+            if last_scan_at is not None and last_scan_at.tzinfo is None:
+                # SQLite (and some other DBAPIs) always hand back naive datetimes,
+                # even though utcnow() -- what wrote this column -- is UTC-aware.
+                # Re-attach UTC so this subtraction doesn't raise TypeError.
+                last_scan_at = last_scan_at.replace(tzinfo=timezone.utc)
+            if last_scan_at and (now - last_scan_at) < interval:
                 continue
             try:
                 run_scan(mailbox, trigger="scheduled")

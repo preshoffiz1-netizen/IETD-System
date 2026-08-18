@@ -7,9 +7,10 @@
 `fetch_new_messages()`, `move_message()`, `delete_message()`, `mark_as_read()`,
 `mark_as_unread()`, `create_folder()`, `search_messages()`, and provider-side extensions
 `mark_as_spam()` / `apply_server_side_rule()`. Every concrete provider
-(`IMAPProvider`, `GmailProvider`, `MicrosoftGraphProvider`, `DemoProvider`) implements this
-same interface, so `scanner_service` and the detection engine never know or care which
-provider a given mailbox uses.
+(`IMAPProvider`, `GmailProvider`, `DemoProvider`) implements this same interface, so
+`scanner_service` and the detection engine never know or care which provider a given mailbox
+uses. (A `MicrosoftGraphProvider` was also implemented against this same interface and later
+removed from this deployment - see `docs/limitations.md` and "Adding a new provider" below.)
 
 ## Capability model (Section 66)
 
@@ -28,14 +29,14 @@ CAPABILITIES = {
 (or a claim about server-side filtering) when the connected provider actually supports it -
 never a button that would silently fail.
 
-| Capability | Generic IMAP | Gmail | Microsoft 365 (Graph) |
-|---|---|---|---|
-| Fetch / move / delete messages | Yes | Yes | Yes |
-| Create folders | Yes | Yes | Yes |
-| OAuth 2.0 | No (password/app password) | Yes | Yes |
-| Server-side filtering / blocking | No | Filtering: partial* | Yes (Graph message rules) |
-| Mark as spam (provider-native) | No | Yes (move to `[Gmail]/Spam`) | Yes (move to Junk Email) |
-| Push notifications | No (polling only) | Documented, not implemented | Documented, not implemented |
+| Capability | Generic IMAP | Gmail |
+|---|---|---|
+| Fetch / move / delete messages | Yes | Yes |
+| Create folders | Yes | Yes |
+| OAuth 2.0 | No (password/app password) | Yes |
+| Server-side filtering / blocking | No | Filtering: partial* |
+| Mark as spam (provider-native) | No | Yes (move to `[Gmail]/Spam`) |
+| Push notifications | No (polling only) | Documented, not implemented |
 
 \* Gmail filter *creation* via the REST API requires the `gmail.settings.basic` OAuth scope,
 which this deployment does not request (it only requests `https://mail.google.com/` for IMAP
@@ -53,8 +54,8 @@ imply otherwise:
   automatically quarantine detected threats" means in the Mailboxes UI.
 - **Pre-delivery / server-side filtering**: the *provider itself* refuses or redirects the
   message before it ever reaches the mailbox. This requires provider support - generic IMAP
-  has no such mechanism at all; Gmail and Microsoft 365 support it only through their
-  respective REST APIs with additional OAuth scopes not requested by this deployment.
+  has no such mechanism at all; Gmail supports it only through the Gmail REST API with an
+  additional OAuth scope not requested by this deployment.
 
 No part of this system claims universal pre-delivery blocking, and the Mailboxes page
 communicates this per-connected-mailbox based on its provider's actual capabilities.
@@ -75,16 +76,27 @@ connects to `imap.gmail.com:993` and authenticates using the SASL `XOAUTH2` mech
 OAuth 2.0 access token, instead of a password. This means all the IMAP command logic
 (list/fetch/move/delete/mark) is reused unmodified. `app/providers/gmail_provider.py` also
 contains the OAuth helper functions (`build_authorization_url`, `exchange_code_for_token`,
-`refresh_access_token`) used by the `/mailboxes/oauth/gmail/*` routes. IETDS never asks for or
-stores the user's actual Google account password.
+`refresh_access_token`, `get_authenticated_email`) used by the `/mailboxes/oauth/gmail/*`
+routes. IETDS never asks for or stores the user's actual Google account password. Access tokens
+expire after roughly an hour; `mailbox_service.build_provider()` checks the stored expiry before
+every connection and transparently refreshes via the stored refresh token, so continuous
+background monitoring keeps working unattended. Getting real `GMAIL_CLIENT_ID` /
+`GMAIL_CLIENT_SECRET` values requires a one-time OAuth app registration in Google Cloud Console
+(not something the codebase can do for you) - see `docs/oauth-setup.md` for exact steps.
 
-## Microsoft 365 / Outlook (Microsoft Graph)
+## Microsoft 365 / Outlook (removed)
 
-`MicrosoftGraphProvider` talks to `https://graph.microsoft.com/v1.0` directly over HTTPS
-(not IMAP), because Graph exposes richer capabilities than IMAP alone (message rules,
-categories, and richer folder operations) once the right scopes are granted. Authentication
-uses the standard OAuth 2.0 authorization-code flow against
-`https://login.microsoftonline.com/<tenant>/oauth2/v2.0/`.
+A `MicrosoftGraphProvider` talking directly to `https://graph.microsoft.com/v1.0` over HTTPS
+(not IMAP) was implemented against the same `MailboxProvider` interface as the other two
+providers - message rules, categories, and richer folder operations than IMAP alone, OAuth 2.0
+authorization-code flow against `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/`,
+transparent token refresh, and address lookup via Graph's `/me` endpoint, mirroring Gmail's
+implementation. It was removed from this deployment because registering the required Azure AD
+app needs an organizational tenant, which isn't available from a personal Microsoft account
+without extra setup (a free Entra ID tenant or Microsoft 365 Developer Program sandbox) that
+was out of scope for this project's timeline - see `docs/limitations.md`. Because the provider
+abstraction was designed exactly for this kind of swap, re-adding it later is a self-contained
+change (see "Adding a new provider" below) rather than a rearchitecture.
 
 ## Demo provider
 

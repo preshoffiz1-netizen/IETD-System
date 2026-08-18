@@ -5,8 +5,8 @@
 > Protecting every mailbox from spam, scams, and email-based threats.
 
 IETDS is a rule-based email security web application built as a final-year Computer Science
-project. It connects to a mailbox (generic IMAP, Gmail via OAuth 2.0, or Microsoft 365 via
-Microsoft Graph), scans incoming email, and uses a transparent, explainable, weighted
+project. It connects to a mailbox (generic IMAP, or Gmail via OAuth 2.0), scans incoming email,
+and uses a transparent, explainable, weighted
 rule-based detection engine to classify each message as **CLEAN**, **SUSPICIOUS**, **SPAM**,
 **SCAM**, **PHISHING**, or **MALICIOUS_ATTACHMENT** - then quarantines, flags, or allows it
 according to a configurable action policy.
@@ -31,8 +31,9 @@ explainable, rule-based system that individuals and small teams can run themselv
 
 ## 3. Features
 
-- Multi-provider mailbox connection: generic IMAP, Gmail (OAuth 2.0), Microsoft 365 / Outlook
-  (Microsoft Graph OAuth 2.0), plus a built-in Demo mode with synthetic test emails.
+- Multi-provider mailbox connection: generic IMAP and Gmail (OAuth 2.0), plus a built-in Demo
+  mode with synthetic test emails. (A Microsoft 365/Outlook Graph API provider was designed and
+  implemented but removed from this deployment - see `docs/limitations.md`.)
 - Full ingestion pipeline: fetch -> deduplicate -> parse -> analyze -> score -> classify ->
   act -> persist -> audit.
 - Rule-based detection engine covering spam, scam, phishing, malicious URLs, dangerous
@@ -61,7 +62,7 @@ User
 Web Application (Flask)
   |
   v
-Mailbox Provider Layer  --  IMAPProvider / GmailProvider / MicrosoftGraphProvider / DemoProvider
+Mailbox Provider Layer  --  IMAPProvider / GmailProvider / DemoProvider
   |
   v
 Email Ingestion (scanner_service) -> Email Parser (email_parser)
@@ -97,7 +98,7 @@ how the rule-based engine and scoring model work.
 | Frontend | Server-rendered HTML/Jinja2, Bootstrap 5, Chart.js, vanilla JS |
 | Background jobs | APScheduler (in-process; Celery+Redis-ready architecture) |
 | Auth | Flask-Login, Argon2 password hashing, Flask-WTF CSRF protection |
-| Mailbox integration | `imaplib` (generic IMAP + Gmail XOAUTH2), Microsoft Graph REST API |
+| Mailbox integration | `imaplib` (generic IMAP + Gmail XOAUTH2) |
 | Testing | pytest |
 | Production server | gunicorn (WSGI) |
 
@@ -126,8 +127,8 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 ```
 
 Edit `.env` and fill in `SECRET_KEY` and `ENCRYPTION_KEY` at minimum. Everything else has a
-sensible development default. See `.env.example` for the full list (Gmail/Microsoft OAuth
-credentials are optional and only needed if you want to connect those providers).
+sensible development default. See `.env.example` for the full list (Gmail OAuth credentials
+are optional and only needed if you want to connect that provider).
 
 ## 9. Database Setup
 
@@ -168,16 +169,9 @@ stored.
 3. In IETDS, go to **Mailboxes -> Connect Mailbox -> Gmail -> Connect with Google**.
 
 IETDS never asks for or stores your Google password - only an OAuth token, encrypted at rest.
+Full walkthrough with screenshots-equivalent detail: `docs/oauth-setup.md`.
 
-## 13. Connecting Microsoft 365 / Outlook (OAuth 2.0)
-
-1. Register an app in [Azure App Registrations](https://portal.azure.com/), add the
-   `Mail.ReadWrite`, `Mail.Send`, `offline_access`, and `User.Read` Graph API permissions, and
-   add `http://localhost:5000/mailboxes/oauth/microsoft/callback` as a redirect URI.
-2. Put the client ID/secret into `.env` as `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET`.
-3. In IETDS, go to **Mailboxes -> Connect Mailbox -> Microsoft 365 -> Connect with Microsoft**.
-
-## 14. Running Background Workers
+## 13. Running Background Workers
 
 Background scanning is built into the Flask process via APScheduler - there is no separate
 worker process to start for local development or a typical final-year-project demo. Enable
@@ -185,7 +179,7 @@ worker process to start for local development or a typical final-year-project de
 its configured interval (default 5 minutes). See `docs/architecture.md` for how to swap in a
 Celery + Redis worker if you need horizontal scaling later.
 
-## 15. Running Tests
+## 14. Running Tests
 
 ```bash
 pip install -r requirements.txt   # pytest is included
@@ -199,7 +193,7 @@ pytest --cov=app                    # with coverage
 
 No test requires live mailbox credentials - provider tests mock `imaplib` / HTTP calls.
 
-## 16. Demo Mode
+## 15. Demo Mode
 
 Every account can add a **Demo mailbox** (Mailboxes -> Connect Mailbox -> Demo Mode) that is
 pre-loaded with ten clearly-labelled synthetic emails covering every classification: clean
@@ -209,7 +203,7 @@ malicious attachment, and a brand-impersonation/spoofing attempt. Click **Scan N
 the full pipeline against them without connecting any real account. No real person's email
 content is used anywhere in the demo fixtures.
 
-## 17. Security Notes
+## 16. Security Notes
 
 - Passwords are hashed with Argon2 (never stored in plaintext).
 - Mailbox passwords and OAuth tokens are encrypted at rest with Fernet (`ENCRYPTION_KEY`).
@@ -224,7 +218,7 @@ content is used anywhere in the demo fixtures.
 - The application never permanently deletes a dangerous email by default - only
   quarantine/flag/notify actions are enabled out of the box.
 
-## 18. Limitations (stated honestly, per academic requirement)
+## 17. Limitations (stated honestly, per academic requirement)
 
 - **Detection approach**: the core engine is rule-based, not machine learning. This is a
   deliberate design choice (see `docs/detection-engine.md`) favoring explainability,
@@ -233,35 +227,44 @@ content is used anywhere in the demo fixtures.
 - **Pre-delivery vs. post-delivery filtering**: IETDS reliably provides *post-delivery*
   filtering for every provider (the email lands in the mailbox, IETDS scans it and takes
   action). True *pre-delivery/server-side* blocking (mail never reaching the inbox) is only
-  available where the underlying provider exposes it (Gmail/Microsoft Graph server-side rules)
-  - generic IMAP has no such capability. The UI states this explicitly per mailbox
-    (see the provider capability model in `app/providers/base.py`).
+  available where the underlying provider exposes it (Gmail server-side filters) - generic IMAP
+  has no such capability. The UI states this explicitly per mailbox (see the provider
+  capability model in `app/providers/base.py`).
 - **Gmail server-side filters**: creating actual Gmail inbox filters requires the
   `gmail.settings.basic` OAuth scope and the Gmail REST API, which this deployment does not
   request by default (it only requests IMAP mail access). Documented as an extension point.
+- **Provider scope**: a Microsoft 365/Outlook provider (Graph API) was designed and fully
+  implemented, but was removed from this deployment after Azure app-registration setup proved
+  impractical to complete with a personal Microsoft account within the project timeline - see
+  `docs/limitations.md` for the full explanation. Generic IMAP and Gmail OAuth are the two
+  mailbox connection paths this project is tested against.
 - **Scope**: this project is scoped to individual/small-organization use, tested primarily
   against a personal Gmail account, and does not target large-scale enterprise deployment.
 - **Attachment analysis**: attachments are inspected (filename, extension, MIME type, hash)
   but never opened, executed, or scanned by an antivirus engine - there is no sandboxing.
 
-## 19. Future Enhancements
+## 18. Future Enhancements
 
 - Optional machine-learning-assisted classification as a *complement* to (not replacement of)
   the rule-based engine, with the rule engine remaining the explainable baseline.
-- Gmail/Microsoft push notifications (Pub/Sub / Graph change notifications) instead of polling.
+- Re-add a Microsoft 365/Outlook (Graph API) provider once a suitable Azure tenant is
+  available - the abstraction (`MailboxProvider`) already supports adding it back as a
+  self-contained module with no changes needed elsewhere (see `docs/mailbox-integration.md`
+  "Adding a new provider").
+- Gmail push notifications (Pub/Sub) instead of polling.
 - Gmail REST API integration for genuine server-side filter creation.
 - PDF report export (CSV/JSON are implemented; PDF is a natural next step via the existing
   report_service data).
 - Celery + Redis worker backend for multi-instance horizontal scaling.
 
-## 20. Project Structure
+## 19. Project Structure
 
 ```
 ietds/
     app/
         routes/        Flask blueprints (auth, dashboard, mailbox, emails, quarantine, ...)
         services/       Business logic (scanner, threat_engine, scoring, classification, ...)
-        providers/      Mailbox provider abstraction (IMAP, Gmail, Microsoft, Demo)
+        providers/      Mailbox provider abstraction (IMAP, Gmail, Demo)
         detection/       Rule-based detection engine (spam/scam/phishing/url/attachment/...)
         models/          SQLAlchemy models
         templates/       Jinja2 templates
@@ -271,7 +274,7 @@ ietds/
     tests/
         unit/ integration/ security/ providers/
     docs/                Architecture, detection engine, database, API, testing, deployment,
-                         security, and limitations documentation
+                         security, limitations, and Gmail OAuth setup documentation
     scripts/             Utility scripts (seed data, etc.)
     wsgi.py              Production entry point
     run.py               Local development entry point
@@ -280,7 +283,7 @@ ietds/
     .gitignore
 ```
 
-## 21. GitHub Instructions
+## 20. GitHub Instructions
 
 This repository is GitHub-ready. To publish it:
 

@@ -7,10 +7,9 @@ from app.models.base import TimestampMixin, gen_uuid
 class ProviderType:
     IMAP = "imap"
     GMAIL = "gmail"
-    MICROSOFT = "microsoft"
     DEMO = "demo"
 
-    ALL = (IMAP, GMAIL, MICROSOFT, DEMO)
+    ALL = (IMAP, GMAIL, DEMO)
 
 
 class MailboxStatus:
@@ -46,7 +45,7 @@ class Mailbox(db.Model, TimestampMixin):
     imap_username = db.Column(db.String(255), nullable=True)
     encrypted_password = db.Column(db.Text, nullable=True)  # Fernet-encrypted app password
 
-    # --- OAuth (Gmail / Microsoft) ------------------------------------------------
+    # --- OAuth (Gmail) --------------------------------------------------------------
     encrypted_oauth_token = db.Column(db.Text, nullable=True)  # Fernet-encrypted JSON token blob
 
     # --- Monitoring / scanning ------------------------------------------------------

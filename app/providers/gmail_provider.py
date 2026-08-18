@@ -72,7 +72,7 @@ class GmailProvider(IMAPProvider):
         auth_string = f"user={username}\x01auth=Bearer {access_token}\x01\x01"
 
         try:
-            self._conn = imaplib.IMAP4_SSL(host, port, timeout=15)
+            self._conn = imaplib.IMAP4_SSL(host, port, timeout=self.CONNECT_TIMEOUT_SECONDS)
             self._conn.authenticate("XOAUTH2", lambda _: auth_string.encode())
         except imaplib.IMAP4.error as exc:
             raise ProviderAuthError(
@@ -157,3 +157,26 @@ def refresh_access_token(client_id: str, client_secret: str, refresh_token: str)
     )
     response.raise_for_status()
     return response.json()
+
+
+def get_authenticated_email(access_token: str) -> str | None:
+    """
+    Look up the real Google account address behind an access token, via
+    Google's OpenID userinfo endpoint. Used right after the OAuth callback so
+    we store the *actual* mailbox that was authorized, not a guess -- the
+    signed-in IETDS user and the Google account being connected are not
+    necessarily the same address.
+    """
+    import requests
+
+    try:
+        response = requests.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json().get("email")
+    except requests.RequestException as exc:
+        logger.warning("Failed to fetch Gmail userinfo after OAuth: %s", exc)
+        return None

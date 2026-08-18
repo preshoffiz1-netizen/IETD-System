@@ -6,7 +6,6 @@
 <ul class="nav nav-pills mb-3">
     <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'imap' }}" href="{{ url_for('mailbox.connect', provider='imap') }}">Generic IMAP</a></li>
     <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'gmail' }}" href="{{ url_for('mailbox.connect', provider='gmail') }}">Gmail</a></li>
-    <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'microsoft' }}" href="{{ url_for('mailbox.connect', provider='microsoft') }}">Microsoft 365 / Outlook</a></li>
     <li class="nav-item"><a class="nav-link {{ 'active' if provider == 'demo' }}" href="{{ url_for('mailbox.connect', provider='demo') }}">Demo Mode</a></li>
 </ul>
 
@@ -36,14 +35,18 @@
 {% elif provider == 'gmail' %}
     <h6 class="mb-3">Gmail (OAuth 2.0)</h6>
     <p class="text-muted small">IETDS never asks for your Google password. You will be redirected to Google to grant access, and IETDS receives only an OAuth token.</p>
-    <a href="{{ url_for('mailbox.gmail_oauth_start') }}" class="btn btn-primary"><i class="fa-brands fa-google"></i> Connect with Google</a>
-    <p class="text-muted small mt-3 mb-0">Requires <code>GMAIL_CLIENT_ID</code> / <code>GMAIL_CLIENT_SECRET</code> to be configured on the server (see .env.example).</p>
-
-{% elif provider == 'microsoft' %}
-    <h6 class="mb-3">Microsoft 365 / Outlook (OAuth 2.0)</h6>
-    <p class="text-muted small">IETDS never asks for your Microsoft password. You will be redirected to Microsoft to grant access via Microsoft Graph.</p>
-    <a href="{{ url_for('mailbox.microsoft_oauth_start') }}" class="btn btn-primary"><i class="fa-brands fa-microsoft"></i> Connect with Microsoft</a>
-    <p class="text-muted small mt-3 mb-0">Requires <code>MICROSOFT_CLIENT_ID</code> / <code>MICROSOFT_CLIENT_SECRET</code> to be configured on the server (see .env.example).</p>
+    {% if gmail_configured %}
+        <a href="{{ url_for('mailbox.gmail_oauth_start') }}" class="btn btn-primary"><i class="fa-brands fa-google"></i> Connect with Google</a>
+        <p class="text-muted small mt-3 mb-0"><span class="badge text-bg-success">Configured</span> This server has Gmail OAuth credentials set up.</p>
+    {% else %}
+        <a href="{{ url_for('mailbox.gmail_oauth_start') }}" class="btn btn-primary disabled"><i class="fa-brands fa-google"></i> Connect with Google</a>
+        <p class="text-muted small mt-3 mb-0">
+            <span class="badge text-bg-warning">Not configured</span>
+            This server doesn't have <code>GMAIL_CLIENT_ID</code> / <code>GMAIL_CLIENT_SECRET</code> set yet. This is a one-time
+            setup step you do once in your own Google account, not something wrong with the app -
+            see <strong>docs/oauth-setup.md</strong> for the exact walkthrough (Google Cloud Console, ~5 minutes).
+        </p>
+    {% endif %}
 
 {% elif provider == 'demo' %}
     <h6 class="mb-3">Demo Mode</h6>

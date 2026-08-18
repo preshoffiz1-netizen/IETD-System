@@ -25,7 +25,7 @@ Set real values for at least:
   data layer was built against the SQLAlchemy ORM specifically so this swap is a one-line
   `.env` change (Section 46).
 - `SESSION_COOKIE_SECURE=1` (only meaningful behind HTTPS).
-- Gmail/Microsoft OAuth credentials and redirect URIs, updated to your real domain.
+- Gmail OAuth credentials and redirect URI, updated to your real domain.
 
 ## Reverse proxy
 

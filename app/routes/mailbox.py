@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import time
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
@@ -12,8 +13,7 @@ from app.models import Mailbox, ProviderType
 from app.providers import available_providers
 from app.providers.gmail_provider import build_authorization_url as gmail_auth_url
 from app.providers.gmail_provider import exchange_code_for_token as gmail_exchange
-from app.providers.microsoft_provider import build_authorization_url as ms_auth_url
-from app.providers.microsoft_provider import exchange_code_for_token as ms_exchange
+from app.providers.gmail_provider import get_authenticated_email as gmail_get_email
 from app.services import audit_service, mailbox_service, scanner_service
 from app.utils.decorators import owns_resource_or_admin
 
@@ -67,10 +67,8 @@ def connect():
         if provider == "gmail":
             return redirect(url_for("mailbox.gmail_oauth_start"))
 
-        if provider == "microsoft":
-            return redirect(url_for("mailbox.microsoft_oauth_start"))
-
-    return render_template("mailboxes/connect.html", provider=provider)
+    gmail_configured = bool(current_app.config.get("GMAIL_CLIENT_ID") and current_app.config.get("GMAIL_CLIENT_SECRET"))
+    return render_template("mailboxes/connect.html", provider=provider, gmail_configured=gmail_configured)
 
 
 @bp.route("/<mailbox_id>/test", methods=["POST"])
@@ -156,54 +154,13 @@ def gmail_oauth_callback():
         current_app.config["GMAIL_CLIENT_ID"], current_app.config["GMAIL_CLIENT_SECRET"],
         current_app.config["GMAIL_REDIRECT_URI"], code,
     )
-    # In a production build, decode the ID token / call userinfo to get the exact
-    # address; for this project we ask the user to confirm it once.
-    email_address = request.args.get("email") or current_user.email
+    token["obtained_at"] = time.time()  # so mailbox_service can tell when this access token expires
+    # Ask Google directly which account was actually authorized, rather than
+    # assuming it matches the signed-in IETDS user's own email address.
+    email_address = gmail_get_email(token.get("access_token", "")) or current_user.email
     mailbox_service.create_oauth_mailbox(
         organization_id=current_user.organization_id, user_id=current_user.id,
         provider=ProviderType.GMAIL, email_address=email_address, token=token,
     )
-    flash("Gmail mailbox connected via OAuth 2.0.", "success")
-    return redirect(url_for("mailbox.list_mailboxes"))
-
-
-# --- Microsoft OAuth (Section 6) ----------------------------------------------------------
-
-@bp.route("/oauth/microsoft/start")
-@login_required
-def microsoft_oauth_start():
-    client_id = current_app.config.get("MICROSOFT_CLIENT_ID")
-    redirect_uri = current_app.config.get("MICROSOFT_REDIRECT_URI")
-    if not client_id or not redirect_uri:
-        flash("Microsoft OAuth is not configured on this server. Set MICROSOFT_CLIENT_ID / "
-              "MICROSOFT_CLIENT_SECRET / MICROSOFT_REDIRECT_URI in .env.", "warning")
-        return redirect(url_for("mailbox.connect", provider="microsoft"))
-    state = secrets.token_urlsafe(24)
-    session["oauth_state"] = state
-    tenant = current_app.config.get("MICROSOFT_TENANT_ID", "common")
-    return redirect(ms_auth_url(client_id, redirect_uri, tenant, state))
-
-
-@bp.route("/oauth/microsoft/callback")
-@login_required
-def microsoft_oauth_callback():
-    if request.args.get("state") != session.pop("oauth_state", None):
-        flash("OAuth state mismatch. Please try connecting Microsoft 365 again.", "danger")
-        return redirect(url_for("mailbox.connect", provider="microsoft"))
-
-    code = request.args.get("code")
-    if not code:
-        flash("Microsoft authorization was cancelled or failed.", "warning")
-        return redirect(url_for("mailbox.connect", provider="microsoft"))
-
-    token = ms_exchange(
-        current_app.config["MICROSOFT_CLIENT_ID"], current_app.config["MICROSOFT_CLIENT_SECRET"],
-        current_app.config["MICROSOFT_REDIRECT_URI"], current_app.config.get("MICROSOFT_TENANT_ID", "common"), code,
-    )
-    email_address = request.args.get("email") or current_user.email
-    mailbox_service.create_oauth_mailbox(
-        organization_id=current_user.organization_id, user_id=current_user.id,
-        provider=ProviderType.MICROSOFT, email_address=email_address, token=token,
-    )
-    flash("Microsoft 365 mailbox connected via OAuth 2.0.", "success")
+    flash(f"Gmail mailbox {email_address} connected via OAuth 2.0.", "success")
     return redirect(url_for("mailbox.list_mailboxes"))
