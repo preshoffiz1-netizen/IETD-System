@@ -66,6 +66,9 @@ class Config:
 
     # --- Credential encryption (Section 9) ----------------------------------------
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
+    
+    # --- Super admin auto-restore (optional) ------------------------------------
+    SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "").strip().lower()
 
     # --- OAuth providers (Section 6) ------------------------------------------
     # Microsoft 365/Outlook (Graph API) support was removed from this deployment -

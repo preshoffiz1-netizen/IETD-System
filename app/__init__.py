@@ -40,6 +40,7 @@ def create_app(config_name: str | None = None) -> Flask:
         from app import models  # noqa: F401 ensure models are registered with SQLAlchemy
         db.create_all()
         _apply_schema_patches()
+        _ensure_super_admin()
         from app.services import settings_service
         settings_service.ensure_defaults()
 
@@ -89,7 +90,23 @@ def _apply_schema_patches() -> None:
         with db.engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN NOT NULL DEFAULT 0"))
 
+def _ensure_super_admin() -> None:
+    email = current_app.config.get("SUPER_ADMIN_EMAIL")
+    if not email:
+        return
 
+    from app.models import User
+
+    user = User.query.filter_by(email=email).first()
+    if user is None:
+        current_app.logger.info(
+            "SUPER_ADMIN_EMAIL=%s is set but no account with that email exists yet.", email
+        )
+        return
+    if not user.is_super_admin:
+        user.is_super_admin = True
+        db.session.commit()
+        current_app.logger.info("Granted super admin to %s via SUPER_ADMIN_EMAIL.", email)
 def _init_extensions(app: Flask) -> None:
     db.init_app(app)
     migrate.init_app(app, db)

@@ -32,6 +32,8 @@ services:
         generateValue: true
       - key: ENCRYPTION_KEY
         sync: false  # set manually -- must be a real Fernet key, see docs/render-deploy.md
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: ietds-db
