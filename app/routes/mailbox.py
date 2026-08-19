@@ -84,7 +84,14 @@ def test_connection(mailbox_id):
 @login_required
 def scan_now(mailbox_id):
     mailbox = _get_mailbox_or_404(mailbox_id)
-    job = scanner_service.run_scan(mailbox, trigger="manual")
+    try:
+        job = scanner_service.run_scan(mailbox, trigger="manual")
+    except Exception:
+        current_app.logger.exception("Unhandled error starting scan for mailbox %s", mailbox_id)
+        db.session.rollback()
+        flash("Couldn't start the scan just now (a temporary server hiccup) -- please try again.", "danger")
+        return redirect(url_for("mailbox.list_mailboxes"))
+
     if job.status == "completed":
         flash(f"Scan complete: {job.messages_processed} message(s) processed, "
               f"{job.quarantined_count} quarantined.", "success")
